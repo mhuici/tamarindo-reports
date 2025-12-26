@@ -1,6 +1,6 @@
 # TamarindoReports - Module Status
 
-> Last updated: 2025-12-26 (Session 4)
+> Last updated: 2025-12-26 (Session 5)
 
 ## Overview
 
@@ -8,8 +8,8 @@
 |--------|--------|----------|-------|
 | Core (Auth/Tenant) | 🟢 Completed | 100% | - |
 | Database | 🟢 Completed | 100% | - |
-| UI Base | 🟡 In Progress | 75% | - |
-| Integrations | 🔴 Not Started | 10% | - |
+| UI Base | 🟡 In Progress | 80% | - |
+| Integrations | 🟡 In Progress | 50% | - |
 | Reports | 🔴 Not Started | 0% | - |
 | Dashboards | 🔴 Not Started | 0% | - |
 | AI Insights | 🔴 Not Started | 0% | - |
@@ -117,17 +117,25 @@ Pending:
 ---
 
 ### Integrations
-**Status:** 🔴 Not Started (10%)
+**Status:** 🟡 In Progress (50%)
 
 - [x] DataConnector interface
 - [x] Google Ads connector skeleton
 - [x] Facebook Ads connector skeleton
-- [ ] Google OAuth flow
-- [ ] Facebook OAuth flow
-- [ ] Token encryption/storage
-- [ ] Account listing
+- [x] Google OAuth flow (connect + callback)
+- [x] Facebook OAuth flow (connect + callback)
+- [x] Token encryption/storage
+- [x] useIntegrations composable
+- [x] Integrations UI with status
+- [x] Disconnect functionality
+- [ ] Account listing (Google Ads API)
 - [ ] Metrics fetching
 - [ ] Background sync job
+
+**Files:**
+- `apps/web/server/api/integrations/*` - OAuth endpoints
+- `apps/web/composables/useIntegrations.ts` - State management
+- `packages/integrations/src/*` - Connector classes
 
 ---
 
@@ -211,10 +219,18 @@ Pending:
 - Settings page with profile and password management
 - API endpoints for profile and password updates
 
-### Session 5: Integrations Setup (Next)
-- [ ] Google Ads OAuth flow
-- [ ] Facebook Ads OAuth flow
-- [ ] Integration connection UI
+### Session 5: Integrations Setup ✅
+- Google Ads OAuth flow (connect + callback)
+- Facebook Ads OAuth flow (connect + callback)
+- useIntegrations composable
+- Integration connection UI with status tracking
+- Disconnect functionality
+- Encrypted token storage
+
+### Session 6: Report Builder (Next)
+- [ ] Report template model
+- [ ] Widget system
+- [ ] Report builder UI
 
 ---
 
