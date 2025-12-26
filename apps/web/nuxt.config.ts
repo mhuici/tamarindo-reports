@@ -19,7 +19,7 @@ export default defineNuxtConfig({
   // TypeScript configuration
   typescript: {
     strict: true,
-    typeCheck: true,
+    typeCheck: false, // Disabled in dev, run pnpm typecheck manually
   },
 
   // Runtime config (env variables)

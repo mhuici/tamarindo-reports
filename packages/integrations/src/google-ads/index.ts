@@ -90,22 +90,21 @@ export class GoogleAdsConnector implements DataConnector {
     }
   }
 
-  async getAccounts(accessToken: string): Promise<Account[]> {
+  async getAccounts(_accessToken: string): Promise<Account[]> {
     // TODO: Implement using Google Ads API
     // For now, return empty array
-    console.log('Getting Google Ads accounts with token:', accessToken.substring(0, 10) + '...')
     return []
   }
 
   async getMetrics(
-    accessToken: string,
+    _accessToken: string,
     accountId: string,
     dateRange: DateRange,
     _metrics: string[],
   ): Promise<NormalizedMetrics> {
     // TODO: Implement using Google Ads API
-    // For now, return mock data
-    console.log('Getting metrics for account:', accountId, 'range:', dateRange)
+    void accountId
+    void dateRange
 
     return {
       source: 'google-ads',

@@ -6,6 +6,7 @@ definePageMeta({
 
 const route = useRoute()
 const tenant = computed(() => route.params.tenant as string)
+const { user } = useAuth()
 
 // Mock data for demo
 const stats = [
@@ -27,7 +28,7 @@ const recentReports = [
     <!-- Welcome header -->
     <div class="mb-8">
       <h1 class="text-2xl font-bold text-gray-900">
-        Welcome back!
+        Welcome back, {{ user?.name?.split(' ')[0] || 'User' }}!
       </h1>
       <p class="text-gray-600">
         Here's what's happening with your agency today.

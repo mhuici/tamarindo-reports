@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const route = useRoute()
 const tenant = computed(() => route.params.tenant as string)
+const { user, logout } = useAuth()
 
 const navigation = computed(() => [
   { name: 'Dashboard', href: `/${tenant.value}`, icon: 'heroicons:home' },
@@ -11,6 +12,17 @@ const navigation = computed(() => [
 ])
 
 const isSidebarOpen = ref(true)
+const isUserMenuOpen = ref(false)
+const userMenuRef = ref<HTMLElement | null>(null)
+
+// Close menu when clicking outside
+onClickOutside(userMenuRef, () => {
+  isUserMenuOpen.value = false
+})
+
+async function handleLogout() {
+  await logout()
+}
 </script>
 
 <template>
@@ -86,15 +98,59 @@ const isSidebarOpen = ref(true)
           </h1>
         </div>
         <div class="flex items-center gap-4">
-          <!-- User menu placeholder -->
-          <button class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100">
-            <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+          <!-- User menu -->
+          <div
+            ref="userMenuRef"
+            class="relative"
+          >
+            <button
+              class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100"
+              @click="isUserMenuOpen = !isUserMenuOpen"
+            >
+              <div class="w-8 h-8 rounded-full bg-tamarindo-100 flex items-center justify-center">
+                <span class="text-sm font-medium text-tamarindo-700">
+                  {{ user?.name?.charAt(0)?.toUpperCase() || 'U' }}
+                </span>
+              </div>
+              <span class="text-sm text-gray-700 hidden sm:block">{{ user?.name || 'User' }}</span>
               <Icon
-                name="heroicons:user"
-                class="w-5 h-5 text-gray-500"
+                name="heroicons:chevron-down"
+                class="w-4 h-4 text-gray-500"
               />
+            </button>
+
+            <!-- Dropdown menu -->
+            <div
+              v-if="isUserMenuOpen"
+              class="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1"
+            >
+              <div class="px-4 py-2 border-b border-gray-100">
+                <p class="text-sm font-medium text-gray-900">{{ user?.name }}</p>
+                <p class="text-xs text-gray-500">{{ user?.email }}</p>
+              </div>
+              <NuxtLink
+                :to="`/${tenant}/settings`"
+                class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                @click="isUserMenuOpen = false"
+              >
+                <Icon
+                  name="heroicons:cog-6-tooth"
+                  class="w-4 h-4 inline mr-2"
+                />
+                Settings
+              </NuxtLink>
+              <button
+                class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                @click="handleLogout"
+              >
+                <Icon
+                  name="heroicons:arrow-right-on-rectangle"
+                  class="w-4 h-4 inline mr-2"
+                />
+                Sign out
+              </button>
             </div>
-          </button>
+          </div>
         </div>
       </header>
 

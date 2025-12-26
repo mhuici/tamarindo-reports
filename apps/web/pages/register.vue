@@ -7,6 +7,15 @@ useSeoMeta({
   title: 'Start Free Trial - TamarindoReports',
 })
 
+const { register, isAuthenticated } = useAuth()
+
+// Redirect if already authenticated
+watch(isAuthenticated, (authenticated) => {
+  if (authenticated) {
+    navigateTo('/demo')
+  }
+}, { immediate: true })
+
 const form = reactive({
   name: '',
   email: '',
@@ -21,17 +30,24 @@ async function handleSubmit() {
   isLoading.value = true
   error.value = ''
 
-  try {
-    // TODO: Implement registration
-    console.log('Register:', form)
-    await navigateTo('/demo') // Temporary redirect to demo tenant
+  const result = await register({
+    name: form.name,
+    email: form.email,
+    password: form.password,
+    agencyName: form.agencyName,
+  })
+
+  if (result.success) {
+    // Fetch user to get tenant slug
+    const { user } = useAuth()
+    const tenantSlug = user.value?.tenantSlug || 'demo'
+    await navigateTo(`/${tenantSlug}`)
   }
-  catch (e) {
-    error.value = 'Something went wrong. Please try again.'
+  else {
+    error.value = result.error || 'Registration failed. Please try again.'
   }
-  finally {
-    isLoading.value = false
-  }
+
+  isLoading.value = false
 }
 </script>
 
@@ -169,14 +185,22 @@ async function handleSubmit() {
 
           <!-- Social login -->
           <div class="grid grid-cols-2 gap-3">
-            <button class="btn-outline">
+            <button
+              type="button"
+              class="btn-outline"
+              disabled
+            >
               <Icon
                 name="logos:google-icon"
                 class="w-5 h-5 mr-2"
               />
               Google
             </button>
-            <button class="btn-outline">
+            <button
+              type="button"
+              class="btn-outline"
+              disabled
+            >
               <Icon
                 name="logos:facebook"
                 class="w-5 h-5 mr-2"

@@ -103,15 +103,12 @@ export class FacebookAdsConnector implements DataConnector {
   }
 
   async getMetrics(
-    accessToken: string,
+    _accessToken: string,
     accountId: string,
     dateRange: DateRange,
     _metrics: string[],
   ): Promise<NormalizedMetrics> {
     // TODO: Implement using Facebook Marketing API
-    // For now, return mock data
-    console.log('Getting metrics for account:', accountId, 'range:', dateRange)
-
     return {
       source: 'facebook-ads',
       accountId,

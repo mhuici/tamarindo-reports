@@ -7,6 +7,16 @@ useSeoMeta({
   title: 'Login - TamarindoReports',
 })
 
+const { login, isAuthenticated } = useAuth()
+
+// Redirect if already authenticated
+watch(isAuthenticated, (authenticated) => {
+  if (authenticated) {
+    const redirect = useRoute().query.redirect as string
+    navigateTo(redirect || '/demo')
+  }
+}, { immediate: true })
+
 const form = reactive({
   email: '',
   password: '',
@@ -19,17 +29,22 @@ async function handleSubmit() {
   isLoading.value = true
   error.value = ''
 
-  try {
-    // TODO: Implement auth
-    console.log('Login:', form)
-    await navigateTo('/demo') // Temporary redirect to demo tenant
+  const result = await login({
+    email: form.email,
+    password: form.password,
+  })
+
+  if (result.success) {
+    // Fetch user to get tenant slug
+    const { user } = useAuth()
+    const tenantSlug = user.value?.tenantSlug || 'demo'
+    await navigateTo(`/${tenantSlug}`)
   }
-  catch (e) {
-    error.value = 'Invalid email or password'
+  else {
+    error.value = result.error || 'Invalid email or password'
   }
-  finally {
-    isLoading.value = false
-  }
+
+  isLoading.value = false
 }
 </script>
 
@@ -62,6 +77,11 @@ async function handleSubmit() {
             class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
           >
             {{ error }}
+          </div>
+
+          <!-- Demo credentials hint -->
+          <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm">
+            <strong>Demo:</strong> admin@demo.agency / demo123
           </div>
 
           <form
@@ -119,6 +139,11 @@ async function handleSubmit() {
               :disabled="isLoading"
               class="btn-primary w-full"
             >
+              <Icon
+                v-if="isLoading"
+                name="heroicons:arrow-path"
+                class="w-5 h-5 mr-2 animate-spin"
+              />
               <span v-if="isLoading">Signing in...</span>
               <span v-else>Sign in</span>
             </button>
@@ -136,14 +161,22 @@ async function handleSubmit() {
 
           <!-- Social login -->
           <div class="grid grid-cols-2 gap-3">
-            <button class="btn-outline">
+            <button
+              type="button"
+              class="btn-outline"
+              disabled
+            >
               <Icon
                 name="logos:google-icon"
                 class="w-5 h-5 mr-2"
               />
               Google
             </button>
-            <button class="btn-outline">
+            <button
+              type="button"
+              class="btn-outline"
+              disabled
+            >
               <Icon
                 name="logos:facebook"
                 class="w-5 h-5 mr-2"

@@ -1,14 +1,14 @@
 # TamarindoReports - Module Status
 
-> Last updated: 2025-12-26 (Session 2)
+> Last updated: 2025-12-26 (Session 3)
 
 ## Overview
 
 | Module | Status | Progress | Owner |
 |--------|--------|----------|-------|
-| Core (Auth/Tenant) | 🟡 In Progress | 60% | - |
+| Core (Auth/Tenant) | 🟢 Completed | 90% | - |
 | Database | 🟢 Completed | 100% | - |
-| UI Base | 🟡 In Progress | 50% | - |
+| UI Base | 🟡 In Progress | 60% | - |
 | Integrations | 🔴 Not Started | 10% | - |
 | Reports | 🔴 Not Started | 0% | - |
 | Dashboards | 🔴 Not Started | 0% | - |
@@ -21,27 +21,31 @@
 ## Detailed Status
 
 ### Core (Auth/Tenant)
-**Status:** 🟡 In Progress (60%)
+**Status:** 🟢 Completed (90%)
 
 - [x] Project structure setup
 - [x] Nuxt 4 configuration
 - [x] Tailwind + base styles
 - [x] Layout system (default, dashboard)
 - [x] Landing page
-- [x] Login/Register pages (UI only)
+- [x] Login/Register pages (connected to API)
 - [x] JWT authentication utils
-- [x] Auth API routes (login, logout, me)
+- [x] Auth API routes (login, logout, me, register)
 - [x] Password hashing (crypto)
+- [x] useAuth composable
+- [x] Global auth middleware
+- [x] Protected dashboard routes
+- [x] User menu with logout
 - [ ] Google OAuth login
-- [ ] Session management (composable)
-- [ ] Tenant middleware (validate access)
-- [ ] Role-based access control (UI)
+- [ ] Role-based access control (full UI)
 
-**Next steps:** Create useAuth composable, implement Google OAuth
+**Next steps:** Google OAuth, role-based UI restrictions
 
 **Files:**
 - `apps/web/server/utils/auth.ts` - JWT utilities
 - `apps/web/server/api/auth/*` - Auth endpoints
+- `apps/web/composables/useAuth.ts` - Auth composable
+- `apps/web/middleware/auth.global.ts` - Route protection
 
 ---
 
@@ -95,6 +99,7 @@ Implemented:
 - `POST /api/auth/login` - Login with email/password
 - `POST /api/auth/logout` - Clear auth cookie
 - `GET /api/auth/me` - Get current user
+- `POST /api/auth/register` - Register new user + tenant
 - `GET /api/clients` - List clients
 - `POST /api/clients` - Create client
 - `GET /api/clients/:id` - Get client details
@@ -189,11 +194,18 @@ Pending:
 - Auth API routes
 - Client CRUD API
 
-### Session 3: Auth System (Next)
-- [ ] useAuth composable
-- [ ] Protected routes
-- [ ] Login flow integration
-- [ ] Registration flow
+### Session 3: Auth System ✅
+- useAuth composable with login/register/logout
+- Global auth middleware
+- Protected dashboard routes
+- User menu with logout button
+- Registration API endpoint
+- Connected login/register pages to API
+
+### Session 4: Multi-tenant Core (Next)
+- [ ] Tenant middleware (validate slug access)
+- [ ] Client CRUD UI
+- [ ] Settings pages implementation
 
 ---
 
