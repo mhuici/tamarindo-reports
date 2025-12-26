@@ -3,9 +3,14 @@ import * as crypto from 'crypto'
 
 const prisma = new PrismaClient()
 
-// Simple password hash for demo (in production use bcrypt)
+// PBKDF2 password hashing - matches the app's crypto.ts implementation
+const SALT_LENGTH = 16
+const ITERATIONS = 100000
+
 function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(password).digest('hex')
+  const salt = crypto.randomBytes(SALT_LENGTH).toString('hex')
+  const hash = crypto.pbkdf2Sync(password, salt, ITERATIONS, 64, 'sha512').toString('hex')
+  return `${salt}:${hash}`
 }
 
 async function main() {
