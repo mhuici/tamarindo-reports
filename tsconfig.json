@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "forceConsistentCasingInFileNames": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@tamarindo/db": ["./packages/db/src"],
+      "@tamarindo/types": ["./packages/types/src"],
+      "@tamarindo/integrations": ["./packages/integrations/src"],
+      "@tamarindo/ai": ["./packages/ai/src"],
+      "@tamarindo/queue": ["./packages/queue/src"]
+    }
+  },
+  "exclude": ["node_modules", "**/node_modules", "**/.nuxt", "**/.output"]
+}

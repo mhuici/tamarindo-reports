@@ -1,0 +1,312 @@
+// TamarindoReports Database Schema
+// Multi-tenant SaaS for marketing reports
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum Plan {
+  FREE
+  STARTER
+  AGENCY
+  ENTERPRISE
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum DataSourceType {
+  GOOGLE_ADS
+  FACEBOOK_ADS
+  GOOGLE_ANALYTICS
+  INSTAGRAM
+  TIKTOK_ADS
+  LINKEDIN_ADS
+}
+
+enum ReportStatus {
+  DRAFT
+  SCHEDULED
+  GENERATING
+  COMPLETED
+  FAILED
+}
+
+enum ReportType {
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  CAMPAIGN
+  CUSTOM
+}
+
+// ============================================
+// TENANT CONTEXT
+// ============================================
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  plan      Plan     @default(FREE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Branding (white-label)
+  branding Json? // { logo, primaryColor, secondaryColor, font }
+
+  // Settings
+  settings Json? // { timezone, language, emailSettings }
+
+  // Relations
+  users       User[]
+  clients     Client[]
+  dataSources DataSource[]
+  reports     Report[]
+  dashboards  Dashboard[]
+  templates   ReportTemplate[]
+
+  @@index([slug])
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String?
+  name         String?
+  avatarUrl    String?
+  role         Role     @default(MEMBER)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // OAuth tokens (for user's own auth, not data sources)
+  googleId   String? @unique
+  facebookId String? @unique
+
+  // Tenant relation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Activity
+  lastLoginAt DateTime?
+
+  @@index([tenantId])
+  @@index([email])
+}
+
+// ============================================
+// CLIENTS & DATA SOURCES
+// ============================================
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  company   String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Tenant relation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Relations
+  reports         Report[]
+  dashboards      Dashboard[]
+  clientAccounts  ClientAccount[]
+
+  @@index([tenantId])
+}
+
+model DataSource {
+  id          String         @id @default(cuid())
+  type        DataSourceType
+  name        String         // User-friendly name
+  credentials Json           // Encrypted OAuth tokens
+  metadata    Json?          // Platform-specific metadata
+  lastSyncAt  DateTime?
+  syncError   String?
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  // Tenant relation
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Platform accounts available through this data source
+  platformAccounts PlatformAccount[]
+
+  @@index([tenantId])
+  @@index([type])
+}
+
+model PlatformAccount {
+  id               String   @id @default(cuid())
+  platformId       String   // External ID from Google/Facebook
+  name             String
+  currency         String?
+  timezone         String?
+  metadata         Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Data source relation
+  dataSourceId String
+  dataSource   DataSource @relation(fields: [dataSourceId], references: [id], onDelete: Cascade)
+
+  // Client accounts (many-to-many with clients)
+  clientAccounts ClientAccount[]
+
+  // Cached metrics
+  metrics Metric[]
+
+  @@unique([dataSourceId, platformId])
+  @@index([dataSourceId])
+}
+
+// Links clients to platform accounts
+model ClientAccount {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  clientId          String
+  client            Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  platformAccountId String
+  platformAccount   PlatformAccount @relation(fields: [platformAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, platformAccountId])
+  @@index([clientId])
+  @@index([platformAccountId])
+}
+
+// ============================================
+// METRICS (CACHED DATA)
+// ============================================
+
+model Metric {
+  id        String   @id @default(cuid())
+  date      DateTime @db.Date
+  data      Json     // { impressions, clicks, cost, conversions, ... }
+  createdAt DateTime @default(now())
+
+  // Platform account relation
+  platformAccountId String
+  platformAccount   PlatformAccount @relation(fields: [platformAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([platformAccountId, date])
+  @@index([platformAccountId, date])
+}
+
+// ============================================
+// REPORTS & DASHBOARDS
+// ============================================
+
+model ReportTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  widgets     Json     // Widget configuration
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Tenant relation (null = global template)
+  tenantId String?
+  tenant   Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Reports using this template
+  reports Report[]
+
+  @@index([tenantId])
+}
+
+model Report {
+  id         String       @id @default(cuid())
+  name       String
+  type       ReportType   @default(CUSTOM)
+  status     ReportStatus @default(DRAFT)
+  widgets    Json         // Widget configuration with data
+  dateRange  Json         // { start, end }
+  aiInsights String?      // AI-generated insights
+  pdfUrl     String?      // Generated PDF URL
+  error      String?      // Error message if failed
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  // Scheduling
+  scheduledAt  DateTime?
+  scheduleCron String?    // Cron expression for recurring
+
+  // Relations
+  tenantId   String
+  tenant     Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId   String
+  client     Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  templateId String?
+  template   ReportTemplate? @relation(fields: [templateId], references: [id])
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([status])
+}
+
+model Dashboard {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique // For public shareable link
+  widgets   Json     // Widget configuration
+  isPublic  Boolean  @default(false)
+  password  String?  // Optional password protection
+  expiresAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  clientId String
+  client   Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([slug])
+}
+
+// ============================================
+// JOBS & QUEUE
+// ============================================
+
+model Job {
+  id        String   @id @default(cuid())
+  type      String   // sync_data, generate_pdf, generate_insights, send_email
+  status    String   @default("pending") // pending, processing, completed, failed
+  payload   Json
+  result    Json?
+  error     String?
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Optional relations
+  tenantId String?
+  reportId String?
+
+  @@index([type, status])
+  @@index([createdAt])
+}

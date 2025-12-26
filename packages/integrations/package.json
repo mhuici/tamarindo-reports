@@ -1,0 +1,24 @@
+{
+  "name": "@tamarindo/integrations",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./google-ads": "./src/google-ads/index.ts",
+    "./facebook-ads": "./src/facebook-ads/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@tamarindo/types": "workspace:*",
+    "google-ads-api": "^14.1.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.8"
+  }
+}

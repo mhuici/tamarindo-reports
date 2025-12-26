@@ -1,0 +1,37 @@
+{
+  "name": "tamarindo-reports",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm --filter @tamarindo/web dev",
+    "build": "pnpm --filter @tamarindo/web build",
+    "preview": "pnpm --filter @tamarindo/web preview",
+    "dev:pdf": "pnpm --filter @tamarindo/pdf-worker dev",
+    "db:generate": "pnpm --filter @tamarindo/db generate",
+    "db:migrate": "pnpm --filter @tamarindo/db migrate:dev",
+    "db:push": "pnpm --filter @tamarindo/db push",
+    "db:seed": "pnpm --filter @tamarindo/db seed",
+    "db:studio": "pnpm --filter @tamarindo/db studio",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "test:e2e": "pnpm --filter @tamarindo/web test:e2e",
+    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules apps/*/.nuxt apps/*/.output"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "eslint": "^9.17.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-vue": "^9.32.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  },
+  "packageManager": "pnpm@9.15.1",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
