@@ -1,6 +1,6 @@
 import type { H3Event } from 'h3'
 import { getCookie, createError } from 'h3'
-import * as jwt from 'jsonwebtoken'
+import jwt from 'jsonwebtoken'
 import type { AuthUser } from '@tamarindo/types'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-jwt-secret-change-in-production-min-32-chars'
