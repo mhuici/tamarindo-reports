@@ -1,14 +1,14 @@
 # TamarindoReports - Module Status
 
-> Last updated: 2025-12-26 (Session 3)
+> Last updated: 2025-12-26 (Session 4)
 
 ## Overview
 
 | Module | Status | Progress | Owner |
 |--------|--------|----------|-------|
-| Core (Auth/Tenant) | 🟢 Completed | 90% | - |
+| Core (Auth/Tenant) | 🟢 Completed | 100% | - |
 | Database | 🟢 Completed | 100% | - |
-| UI Base | 🟡 In Progress | 60% | - |
+| UI Base | 🟡 In Progress | 75% | - |
 | Integrations | 🔴 Not Started | 10% | - |
 | Reports | 🔴 Not Started | 0% | - |
 | Dashboards | 🔴 Not Started | 0% | - |
@@ -21,7 +21,7 @@
 ## Detailed Status
 
 ### Core (Auth/Tenant)
-**Status:** 🟢 Completed (90%)
+**Status:** 🟢 Completed (100%)
 
 - [x] Project structure setup
 - [x] Nuxt 4 configuration
@@ -30,22 +30,24 @@
 - [x] Landing page
 - [x] Login/Register pages (connected to API)
 - [x] JWT authentication utils
-- [x] Auth API routes (login, logout, me, register)
+- [x] Auth API routes (login, logout, me, register, profile, password)
 - [x] Password hashing (crypto)
 - [x] useAuth composable
 - [x] Global auth middleware
+- [x] Tenant middleware (validates access)
 - [x] Protected dashboard routes
 - [x] User menu with logout
-- [ ] Google OAuth login
-- [ ] Role-based access control (full UI)
-
-**Next steps:** Google OAuth, role-based UI restrictions
+- [x] Settings page (profile, password)
+- [x] Client CRUD (useClients composable + UI)
+- [ ] Google OAuth login (future)
 
 **Files:**
 - `apps/web/server/utils/auth.ts` - JWT utilities
 - `apps/web/server/api/auth/*` - Auth endpoints
 - `apps/web/composables/useAuth.ts` - Auth composable
-- `apps/web/middleware/auth.global.ts` - Route protection
+- `apps/web/composables/useClients.ts` - Client management
+- `apps/web/middleware/auth.global.ts` - Auth protection
+- `apps/web/middleware/tenant.ts` - Tenant validation
 
 ---
 
@@ -202,10 +204,17 @@ Pending:
 - Registration API endpoint
 - Connected login/register pages to API
 
-### Session 4: Multi-tenant Core (Next)
-- [ ] Tenant middleware (validate slug access)
-- [ ] Client CRUD UI
-- [ ] Settings pages implementation
+### Session 4: Multi-tenant Core ✅
+- Tenant middleware (validates user access to tenant routes)
+- useClients composable for state management
+- Client CRUD UI with modal forms
+- Settings page with profile and password management
+- API endpoints for profile and password updates
+
+### Session 5: Integrations Setup (Next)
+- [ ] Google Ads OAuth flow
+- [ ] Facebook Ads OAuth flow
+- [ ] Integration connection UI
 
 ---
 
