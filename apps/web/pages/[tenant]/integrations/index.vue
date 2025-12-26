@@ -2,6 +2,7 @@
 definePageMeta({
   layout: 'dashboard',
   title: 'Integrations',
+  middleware: ['tenant'],
 })
 
 const integrations = [

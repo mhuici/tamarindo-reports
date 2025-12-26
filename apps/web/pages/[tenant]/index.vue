@@ -2,6 +2,7 @@
 definePageMeta({
   layout: 'dashboard',
   title: 'Dashboard',
+  middleware: ['tenant'],
 })
 
 const route = useRoute()

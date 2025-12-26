@@ -2,32 +2,97 @@
 definePageMeta({
   layout: 'dashboard',
   title: 'Settings',
+  middleware: ['tenant'],
 })
 
 const route = useRoute()
 const tenant = computed(() => route.params.tenant as string)
+const { user } = useAuth()
 
-const settingsNav = [
-  { name: 'General', href: `/${tenant.value}/settings`, icon: 'heroicons:cog-6-tooth', current: true },
+const settingsNav = computed(() => [
+  { name: 'Profile', href: `/${tenant.value}/settings`, icon: 'heroicons:user-circle', current: true },
+  { name: 'Agency', href: `/${tenant.value}/settings/agency`, icon: 'heroicons:building-office', current: false },
   { name: 'Branding', href: `/${tenant.value}/settings/branding`, icon: 'heroicons:paint-brush', current: false },
   { name: 'Team', href: `/${tenant.value}/settings/team`, icon: 'heroicons:users', current: false },
   { name: 'Billing', href: `/${tenant.value}/settings/billing`, icon: 'heroicons:credit-card', current: false },
-]
+])
 
-const form = reactive({
-  agencyName: 'Demo Agency',
-  email: 'admin@demo.agency',
-  timezone: 'America/Mexico_City',
-  language: 'es',
+const profileForm = reactive({
+  name: user.value?.name || '',
+  email: user.value?.email || '',
 })
 
-const isSaving = ref(false)
+const passwordForm = reactive({
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+})
 
-async function handleSave() {
-  isSaving.value = true
-  // TODO: Implement save
-  await new Promise(resolve => setTimeout(resolve, 1000))
-  isSaving.value = false
+const isSavingProfile = ref(false)
+const isSavingPassword = ref(false)
+const profileSuccess = ref(false)
+const passwordSuccess = ref(false)
+const profileError = ref('')
+const passwordError = ref('')
+
+async function handleSaveProfile() {
+  isSavingProfile.value = true
+  profileError.value = ''
+  profileSuccess.value = false
+
+  try {
+    await $fetch('/api/auth/profile', {
+      method: 'PUT',
+      body: {
+        name: profileForm.name,
+      },
+    })
+    profileSuccess.value = true
+    setTimeout(() => profileSuccess.value = false, 3000)
+  }
+  catch (e: any) {
+    profileError.value = e?.data?.message || 'Failed to update profile'
+  }
+  finally {
+    isSavingProfile.value = false
+  }
+}
+
+async function handleChangePassword() {
+  if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+    passwordError.value = 'Passwords do not match'
+    return
+  }
+
+  if (passwordForm.newPassword.length < 8) {
+    passwordError.value = 'Password must be at least 8 characters'
+    return
+  }
+
+  isSavingPassword.value = true
+  passwordError.value = ''
+  passwordSuccess.value = false
+
+  try {
+    await $fetch('/api/auth/password', {
+      method: 'PUT',
+      body: {
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      },
+    })
+    passwordSuccess.value = true
+    passwordForm.currentPassword = ''
+    passwordForm.newPassword = ''
+    passwordForm.confirmPassword = ''
+    setTimeout(() => passwordSuccess.value = false, 3000)
+  }
+  catch (e: any) {
+    passwordError.value = e?.data?.message || 'Failed to change password'
+  }
+  finally {
+    isSavingPassword.value = false
+  }
 }
 </script>
 
@@ -39,7 +104,7 @@ async function handleSave() {
         Settings
       </h1>
       <p class="text-gray-600">
-        Manage your agency settings and preferences.
+        Manage your account and agency settings.
       </p>
     </div>
 
@@ -71,28 +136,63 @@ async function handleSave() {
       </nav>
 
       <!-- Content -->
-      <div class="flex-1">
+      <div class="flex-1 space-y-6">
+        <!-- Profile Card -->
         <div class="card">
           <div class="card-header">
             <h2 class="font-semibold text-gray-900">
-              General Settings
+              Profile Information
             </h2>
           </div>
           <div class="card-body">
-            <form
-              class="space-y-6"
-              @submit.prevent="handleSave"
+            <!-- Success message -->
+            <div
+              v-if="profileSuccess"
+              class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm"
             >
+              Profile updated successfully!
+            </div>
+
+            <!-- Error message -->
+            <div
+              v-if="profileError"
+              class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
+            >
+              {{ profileError }}
+            </div>
+
+            <form
+              class="space-y-4"
+              @submit.prevent="handleSaveProfile"
+            >
+              <!-- Avatar -->
+              <div class="flex items-center gap-4">
+                <div class="w-16 h-16 rounded-full bg-tamarindo-100 flex items-center justify-center">
+                  <span class="text-2xl font-semibold text-tamarindo-700">
+                    {{ user?.name?.charAt(0)?.toUpperCase() || 'U' }}
+                  </span>
+                </div>
+                <div>
+                  <p class="font-medium text-gray-900">
+                    {{ user?.name }}
+                  </p>
+                  <p class="text-sm text-gray-500">
+                    {{ user?.role }}
+                  </p>
+                </div>
+              </div>
+
               <div>
                 <label
-                  for="agencyName"
+                  for="name"
                   class="label"
-                >Agency Name</label>
+                >Full Name</label>
                 <input
-                  id="agencyName"
-                  v-model="form.agencyName"
+                  id="name"
+                  v-model="profileForm.name"
                   type="text"
                   class="input"
+                  required
                 >
               </div>
 
@@ -100,97 +200,123 @@ async function handleSave() {
                 <label
                   for="email"
                   class="label"
-                >Contact Email</label>
+                >Email</label>
                 <input
                   id="email"
-                  v-model="form.email"
+                  v-model="profileForm.email"
                   type="email"
-                  class="input"
+                  class="input bg-gray-50"
+                  disabled
                 >
-              </div>
-
-              <div>
-                <label
-                  for="timezone"
-                  class="label"
-                >Timezone</label>
-                <select
-                  id="timezone"
-                  v-model="form.timezone"
-                  class="input"
-                >
-                  <option value="America/Mexico_City">
-                    America/Mexico_City (GMT-6)
-                  </option>
-                  <option value="America/New_York">
-                    America/New_York (GMT-5)
-                  </option>
-                  <option value="America/Los_Angeles">
-                    America/Los_Angeles (GMT-8)
-                  </option>
-                  <option value="Europe/Madrid">
-                    Europe/Madrid (GMT+1)
-                  </option>
-                </select>
-              </div>
-
-              <div>
-                <label
-                  for="language"
-                  class="label"
-                >Language</label>
-                <select
-                  id="language"
-                  v-model="form.language"
-                  class="input"
-                >
-                  <option value="es">
-                    Español
-                  </option>
-                  <option value="en">
-                    English
-                  </option>
-                  <option value="pt">
-                    Português
-                  </option>
-                </select>
+                <p class="mt-1 text-xs text-gray-500">
+                  Email cannot be changed
+                </p>
               </div>
 
               <div class="pt-4 border-t border-gray-200 flex justify-end">
                 <button
                   type="submit"
-                  :disabled="isSaving"
+                  :disabled="isSavingProfile"
                   class="btn-primary"
                 >
-                  <span v-if="isSaving">Saving...</span>
-                  <span v-else>Save Changes</span>
+                  <Icon
+                    v-if="isSavingProfile"
+                    name="heroicons:arrow-path"
+                    class="w-5 h-5 mr-2 animate-spin"
+                  />
+                  {{ isSavingProfile ? 'Saving...' : 'Save Profile' }}
                 </button>
               </div>
             </form>
           </div>
         </div>
 
-        <!-- Danger zone -->
-        <div class="card mt-6 border-red-200">
-          <div class="card-header bg-red-50">
-            <h2 class="font-semibold text-red-700">
-              Danger Zone
+        <!-- Password Card -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="font-semibold text-gray-900">
+              Change Password
             </h2>
           </div>
           <div class="card-body">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="font-medium text-gray-900">
-                  Delete Agency
-                </p>
-                <p class="text-sm text-gray-500">
-                  Permanently delete this agency and all its data.
-                </p>
-              </div>
-              <button class="px-4 py-2 border border-red-300 text-red-700 rounded-lg hover:bg-red-50 text-sm font-medium">
-                Delete Agency
-              </button>
+            <!-- Success message -->
+            <div
+              v-if="passwordSuccess"
+              class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm"
+            >
+              Password changed successfully!
             </div>
+
+            <!-- Error message -->
+            <div
+              v-if="passwordError"
+              class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
+            >
+              {{ passwordError }}
+            </div>
+
+            <form
+              class="space-y-4"
+              @submit.prevent="handleChangePassword"
+            >
+              <div>
+                <label
+                  for="currentPassword"
+                  class="label"
+                >Current Password</label>
+                <input
+                  id="currentPassword"
+                  v-model="passwordForm.currentPassword"
+                  type="password"
+                  class="input"
+                  required
+                >
+              </div>
+
+              <div>
+                <label
+                  for="newPassword"
+                  class="label"
+                >New Password</label>
+                <input
+                  id="newPassword"
+                  v-model="passwordForm.newPassword"
+                  type="password"
+                  class="input"
+                  required
+                  minlength="8"
+                >
+              </div>
+
+              <div>
+                <label
+                  for="confirmPassword"
+                  class="label"
+                >Confirm New Password</label>
+                <input
+                  id="confirmPassword"
+                  v-model="passwordForm.confirmPassword"
+                  type="password"
+                  class="input"
+                  required
+                >
+              </div>
+
+              <div class="pt-4 border-t border-gray-200 flex justify-end">
+                <button
+                  type="submit"
+                  :disabled="isSavingPassword"
+                  class="btn-primary"
+                >
+                  <Icon
+                    v-if="isSavingPassword"
+                    name="heroicons:arrow-path"
+                    class="w-5 h-5 mr-2 animate-spin"
+                  />
+                  {{ isSavingPassword ? 'Changing...' : 'Change Password' }}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </div>
