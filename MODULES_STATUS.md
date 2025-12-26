@@ -1,13 +1,13 @@
 # TamarindoReports - Module Status
 
-> Last updated: 2025-12-26
+> Last updated: 2025-12-26 (Session 2)
 
 ## Overview
 
 | Module | Status | Progress | Owner |
 |--------|--------|----------|-------|
-| Core (Auth/Tenant) | 🟡 In Progress | 40% | - |
-| Database | 🟡 In Progress | 60% | - |
+| Core (Auth/Tenant) | 🟡 In Progress | 60% | - |
+| Database | 🟢 Completed | 100% | - |
 | UI Base | 🟡 In Progress | 50% | - |
 | Integrations | 🔴 Not Started | 10% | - |
 | Reports | 🔴 Not Started | 0% | - |
@@ -21,7 +21,7 @@
 ## Detailed Status
 
 ### Core (Auth/Tenant)
-**Status:** 🟡 In Progress (40%)
+**Status:** 🟡 In Progress (60%)
 
 - [x] Project structure setup
 - [x] Nuxt 4 configuration
@@ -29,29 +29,44 @@
 - [x] Layout system (default, dashboard)
 - [x] Landing page
 - [x] Login/Register pages (UI only)
-- [ ] JWT authentication
+- [x] JWT authentication utils
+- [x] Auth API routes (login, logout, me)
+- [x] Password hashing (crypto)
 - [ ] Google OAuth login
-- [ ] Session management
-- [ ] Tenant middleware
-- [ ] Role-based access control
+- [ ] Session management (composable)
+- [ ] Tenant middleware (validate access)
+- [ ] Role-based access control (UI)
 
-**Next steps:** Implement JWT auth with Nuxt Auth module
+**Next steps:** Create useAuth composable, implement Google OAuth
+
+**Files:**
+- `apps/web/server/utils/auth.ts` - JWT utilities
+- `apps/web/server/api/auth/*` - Auth endpoints
 
 ---
 
 ### Database
-**Status:** 🟡 In Progress (60%)
+**Status:** 🟢 Completed (100%)
 
 - [x] Prisma schema defined
 - [x] All models created
-- [x] Seed script
-- [ ] Railway PostgreSQL setup
-- [ ] Initial migration
-- [ ] Query helpers
+- [x] Docker Compose for local dev
+- [x] Environment variables
+- [x] Seed script with demo data
+- [x] Query helpers (tenant, user, client)
+- [x] Encryption utilities for tokens
 
 **Files:**
 - `packages/db/prisma/schema.prisma`
-- `packages/db/src/client.ts`
+- `packages/db/src/helpers/*`
+- `docker-compose.yml`
+
+**Run locally:**
+```bash
+docker-compose up -d
+pnpm db:push
+pnpm db:seed
+```
 
 ---
 
@@ -65,15 +80,32 @@
 - [x] Navigation structure
 - [x] Basic pages scaffolded
 - [ ] Tremor.so components integration
-- [ ] Form validation (zod)
+- [ ] Form validation (zod + UI)
 - [ ] Toast notifications
 - [ ] Modal system
 - [ ] Loading states
 
-**Files:**
-- `apps/web/assets/css/main.css`
-- `apps/web/tailwind.config.ts`
-- `apps/web/layouts/dashboard.vue`
+---
+
+### API Routes
+**Status:** 🟡 In Progress
+
+Implemented:
+- `GET /api/tenants/:slug` - Get tenant public info
+- `POST /api/auth/login` - Login with email/password
+- `POST /api/auth/logout` - Clear auth cookie
+- `GET /api/auth/me` - Get current user
+- `GET /api/clients` - List clients
+- `POST /api/clients` - Create client
+- `GET /api/clients/:id` - Get client details
+- `PUT /api/clients/:id` - Update client
+- `DELETE /api/clients/:id` - Delete client
+
+Pending:
+- Reports CRUD
+- Dashboards CRUD
+- Integrations OAuth
+- AI endpoints
 
 ---
 
@@ -90,10 +122,6 @@
 - [ ] Metrics fetching
 - [ ] Background sync job
 
-**Files:**
-- `packages/integrations/src/google-ads/`
-- `packages/integrations/src/facebook-ads/`
-
 ---
 
 ### Reports
@@ -102,7 +130,6 @@
 - [ ] Report builder UI
 - [ ] Widget system
 - [ ] Drag & drop
-- [ ] Widget types (metric, chart, table, text)
 - [ ] Report preview
 - [ ] Report scheduling
 - [ ] Email delivery
@@ -116,7 +143,6 @@
 - [ ] Password protection
 - [ ] Shareable link generation
 - [ ] Real-time updates (SSE)
-- [ ] Mobile responsive
 
 ---
 
@@ -126,7 +152,6 @@
 - [ ] OpenAI integration
 - [ ] Insights prompt engineering
 - [ ] Recommendations generation
-- [ ] Caching
 
 ---
 
@@ -136,7 +161,6 @@
 - [ ] Branding settings UI
 - [ ] Logo upload
 - [ ] Color customization
-- [ ] Email templates
 
 ---
 
@@ -150,31 +174,52 @@
 
 ---
 
-## Sprint Progress
+## Sessions Completed
 
-### Sprint 1: Foundation (Current)
-- [x] Monorepo setup
-- [x] Nuxt 4 + Tailwind
-- [x] Database schema
-- [x] Basic UI
-- [ ] Auth system
-- [ ] Multi-tenant middleware
+### Session 1: Foundation ✅
+- Monorepo setup
+- Nuxt 4 + Tailwind
+- Database schema
+- Basic UI pages
 
-### Sprint 2: Integrations
-- [ ] Google Ads OAuth
-- [ ] Facebook Ads OAuth
-- [ ] Data sync
+### Session 2: Database Setup ✅
+- Docker Compose (PostgreSQL + Redis)
+- Query helpers (tenant, user, client)
+- Encryption utilities
+- Auth API routes
+- Client CRUD API
 
-### Sprint 3: Reports
-- [ ] Report builder
-- [ ] PDF generation
+### Session 3: Auth System (Next)
+- [ ] useAuth composable
+- [ ] Protected routes
+- [ ] Login flow integration
+- [ ] Registration flow
 
-### Sprint 4: Differentiators
-- [ ] Micro-dashboards
-- [ ] AI Insights
-- [ ] White-label
+---
 
-### Sprint 5: Launch
-- [ ] Testing
-- [ ] Optimization
-- [ ] Production deploy
+## Quick Start
+
+```bash
+# Start databases
+docker-compose up -d
+
+# Install dependencies
+pnpm install
+
+# Generate Prisma client
+pnpm db:generate
+
+# Push schema to database
+pnpm db:push
+
+# Seed demo data
+pnpm db:seed
+
+# Start development server
+pnpm dev
+```
+
+**Demo credentials:**
+- Email: `admin@demo.agency`
+- Password: `demo123`
+- URL: `http://localhost:3000/demo`
