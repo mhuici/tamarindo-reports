@@ -1,6 +1,6 @@
 # TamarindoReports - Module Status
 
-> Last updated: 2025-12-26 (Session 6)
+> Last updated: 2025-12-26 (Session 7)
 
 ## Overview
 
@@ -8,10 +8,10 @@
 |--------|--------|----------|-------|
 | Core (Auth/Tenant) | 🟢 Completed | 100% | - |
 | Database | 🟢 Completed | 100% | - |
-| UI Base | 🟡 In Progress | 85% | - |
+| UI Base | 🟡 In Progress | 90% | - |
 | Integrations | 🟡 In Progress | 50% | - |
 | Reports | 🟡 In Progress | 60% | - |
-| Dashboards | 🔴 Not Started | 0% | - |
+| Dashboards | 🟡 In Progress | 80% | - |
 | AI Insights | 🔴 Not Started | 0% | - |
 | White Label | 🔴 Not Started | 0% | - |
 | PDF Worker | 🔴 Not Started | 0% | - |
@@ -115,8 +115,15 @@ Reports:
 - `PUT /api/reports/:id` - Update report
 - `DELETE /api/reports/:id` - Delete report
 
+Dashboards:
+- `GET /api/dashboards` - List dashboards (with filters)
+- `POST /api/dashboards` - Create dashboard
+- `GET /api/dashboards/:id` - Get dashboard details
+- `PUT /api/dashboards/:id` - Update dashboard
+- `DELETE /api/dashboards/:id` - Delete dashboard
+- `GET /api/dashboards/public/:slug` - Public dashboard view
+
 Pending:
-- Dashboards CRUD
 - AI endpoints
 
 ---
@@ -185,12 +192,26 @@ FACEBOOK_APP_SECRET=<from Meta Developer Portal>
 ---
 
 ### Dashboards
-**Status:** 🔴 Not Started (0%)
+**Status:** 🟡 In Progress (80%)
 
-- [ ] Public dashboard view
-- [ ] Password protection
-- [ ] Shareable link generation
+- [x] Dashboard CRUD API (list, create, read, update, delete)
+- [x] useDashboards composable
+- [x] Dashboards list page with create modal
+- [x] Dashboard editor page with widget management
+- [x] Public dashboard view (`/d/[slug]`)
+- [x] Shareable link generation (unique slug)
+- [x] Copy link to clipboard
+- [x] Password protection
+- [x] Link expiration support
 - [ ] Real-time updates (SSE)
+- [ ] Widget data integration
+
+**Files:**
+- `apps/web/server/api/dashboards/*` - CRUD endpoints
+- `apps/web/server/api/dashboards/public/[slug].get.ts` - Public access
+- `apps/web/composables/useDashboards.ts` - State management
+- `apps/web/pages/[tenant]/dashboards/*` - Dashboard pages
+- `apps/web/pages/d/[slug].vue` - Public view
 
 ---
 
@@ -269,10 +290,22 @@ FACEBOOK_APP_SECRET=<from Meta Developer Portal>
 - Widget components (Metric, Chart, Table, Text)
 - WidgetRenderer component for dynamic rendering
 
-### Session 7: Dashboards & PDF (Next)
-- [ ] Public dashboard view
-- [ ] Shareable link generation
+### Session 7: Dashboards ✅
+- Dashboard CRUD API (index.get, index.post, [id].get, [id].put, [id].delete)
+- Public dashboard API (public/[slug].get)
+- useDashboards composable with state management
+- Dashboards list page with create modal
+- Dashboard editor with widget management
+- Public dashboard view (`/d/[slug]`)
+- Shareable link with unique slug generation
+- Copy link to clipboard functionality
+- Password protection with SHA256 hashing
+- Link expiration support
+
+### Session 8: AI Insights & PDF (Next)
+- [ ] OpenAI integration
 - [ ] PDF generation with Puppeteer
+- [ ] Report insights generation
 
 ---
 

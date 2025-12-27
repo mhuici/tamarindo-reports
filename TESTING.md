@@ -10,7 +10,7 @@
 | Clients | ❌ | ❌ | ✅ Probado | 🟡 |
 | Integrations | ❌ | ❌ | ⚠️ Pendiente | 🔴 |
 | Reports | ❌ | ❌ | ⚠️ Pendiente | 🔴 |
-| Dashboards | ❌ | ❌ | ❌ No iniciado | 🔴 |
+| Dashboards | ❌ | ❌ | ⚠️ Pendiente | 🔴 |
 | PDF Worker | ❌ | ❌ | ❌ No iniciado | 🔴 |
 | AI Insights | ❌ | ❌ | ❌ No iniciado | 🔴 |
 
@@ -139,14 +139,30 @@ FACEBOOK_APP_SECRET=<obtener de Meta Developer Portal>
 
 ---
 
-## 5. Dashboards (No Iniciado ❌)
+## 5. Dashboards (⚠️ Pendiente Testing Manual)
 
-### Por Implementar
-- [ ] Crear dashboard desde reporte
-- [ ] Generar slug único para compartir
-- [ ] Vista pública sin autenticación
-- [ ] Protección con contraseña opcional
-- [ ] Actualización en tiempo real (SSE)
+### Funcional Implementado
+- [x] API CRUD completa
+- [x] Lista de dashboards
+- [x] Crear dashboard con modal
+- [x] Editor de dashboard
+- [x] Vista pública sin autenticación
+- [x] Generación de slug único
+- [x] Copiar link al portapapeles
+- [x] Protección con contraseña
+- [x] Soporte de expiración
+
+### Pendiente de Probar
+- [ ] Crear dashboard seleccionando cliente
+- [ ] Configurar como público/privado
+- [ ] Acceder via link público `/d/[slug]`
+- [ ] Ingresar contraseña correcta muestra dashboard
+- [ ] Ingresar contraseña incorrecta muestra error
+- [ ] Dashboard expirado muestra mensaje de error
+- [ ] Dashboard privado muestra error 403
+- [ ] Copiar link funciona en navegador
+- [ ] Widgets se guardan y cargan correctamente
+- [ ] Settings modal actualiza nombre/público/contraseña
 
 ---
 
