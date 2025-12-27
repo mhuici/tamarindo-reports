@@ -11,8 +11,8 @@
 | Integrations | ❌ | ❌ | ⚠️ Pendiente | 🔴 |
 | Reports | ❌ | ❌ | ⚠️ Pendiente | 🔴 |
 | Dashboards | ❌ | ❌ | ⚠️ Pendiente | 🔴 |
-| PDF Worker | ❌ | ❌ | ❌ No iniciado | 🔴 |
-| AI Insights | ❌ | ❌ | ❌ No iniciado | 🔴 |
+| PDF Worker | ❌ | ❌ | ⚠️ Estructura | 🔴 |
+| AI Insights | ❌ | ❌ | ⚠️ Pendiente | 🔴 |
 
 ---
 
@@ -166,29 +166,57 @@ FACEBOOK_APP_SECRET=<obtener de Meta Developer Portal>
 
 ---
 
-## 6. PDF Worker (No Iniciado ❌)
+## 6. PDF Worker (⚠️ Estructura Lista)
 
-### Por Implementar
-- [ ] Servicio Puppeteer separado
-- [ ] Cola BullMQ para jobs
-- [ ] Renderizado de página de reporte
-- [ ] Subida a almacenamiento (R2/S3)
-- [ ] URL de descarga en reporte
+### Funcional Implementado
+- [x] PDF generator service structure
+- [x] Generate PDF API endpoint
+- [x] PDF status check endpoint
+- [x] Mock PDF for testing
+- [x] Support for external PDF services
+
+### Pendiente de Probar
+- [ ] External PDF service integration (Browserless, etc.)
+- [ ] Puppeteer local generation
+- [ ] R2/S3 storage upload
+- [ ] PDF download from report page
+
+### Configuración Requerida
+```bash
+# Option 1: External PDF service
+PDF_SERVICE_URL=<browserless.io or similar>
+PDF_SERVICE_API_KEY=<api key>
+
+# Option 2: Puppeteer
+PUPPETEER_ENABLED=true
+```
 
 ---
 
-## 7. AI Insights (No Iniciado ❌)
+## 7. AI Insights (⚠️ Pendiente Testing Manual)
 
-### Prerrequisitos
+### Funcional Implementado
+- [x] OpenAI client configuration
+- [x] Insights prompt engineering (Spanish)
+- [x] Generate insights API endpoint
+- [x] Mock insights for testing without API key
+- [x] AI status check endpoint
+- [x] UI for generating and displaying insights
+
+### Pendiente de Probar
+- [ ] Generar insights con API key real de OpenAI
+- [ ] Verificar formato de respuesta con GPT-4o-mini
+- [ ] Regenerar insights (sobrescribe anterior)
+- [ ] Insights sin datos de métricas (recomendaciones generales)
+- [ ] Manejo de errores (rate limit, API key inválida)
+
+### Configuración Requerida
 ```bash
 OPENAI_API_KEY=<obtener de platform.openai.com>
 ```
 
-### Por Implementar
-- [ ] Integración OpenAI API
-- [ ] Análisis de métricas
-- [ ] Generación de insights en texto
-- [ ] Sugerencias accionables
+### Modelo Utilizado
+- GPT-4o-mini ($0.15/1M input tokens, $0.60/1M output tokens)
 
 ---
 

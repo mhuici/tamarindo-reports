@@ -17,6 +17,10 @@ const widgets = ref<any[]>([])
 const isSaving = ref(false)
 const saveMessage = ref('')
 
+// AI Insights state
+const isGeneratingInsights = ref(false)
+const insightsError = ref('')
+
 // Fetch report on mount
 onMounted(async () => {
   const report = await fetchReport(reportId.value)
@@ -108,6 +112,37 @@ async function generateReport() {
   }
   finally {
     isSaving.value = false
+  }
+}
+
+async function generateAIInsights() {
+  if (isGeneratingInsights.value) return
+
+  isGeneratingInsights.value = true
+  insightsError.value = ''
+
+  try {
+    const response = await $fetch<{ success: boolean; insights: string; isMock: boolean; error?: string }>('/api/ai/insights', {
+      method: 'POST',
+      body: {
+        reportId: reportId.value,
+        useMock: false, // Will fallback to mock if no API key
+      },
+    })
+
+    if (response.success) {
+      // Refresh report to get updated insights
+      await fetchReport(reportId.value)
+    }
+    else {
+      insightsError.value = response.error || 'Failed to generate insights'
+    }
+  }
+  catch (e: any) {
+    insightsError.value = e?.data?.message || 'Failed to generate insights'
+  }
+  finally {
+    isGeneratingInsights.value = false
   }
 }
 
@@ -427,22 +462,82 @@ function getWidgetIcon(type: string) {
             </div>
           </div>
 
-          <!-- AI Insights section (if completed) -->
-          <div
-            v-if="currentReport.aiInsights"
-            class="card card-body mt-6"
-          >
-            <div class="flex items-center gap-2 mb-3">
+          <!-- AI Insights section -->
+          <div class="card card-body mt-6">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center gap-2">
+                <Icon
+                  name="heroicons:sparkles"
+                  class="w-5 h-5 text-purple-500"
+                />
+                <h3 class="font-semibold text-gray-900">
+                  AI Insights
+                </h3>
+              </div>
+              <button
+                class="btn-secondary text-sm"
+                :disabled="isGeneratingInsights"
+                @click="generateAIInsights"
+              >
+                <Icon
+                  v-if="isGeneratingInsights"
+                  name="heroicons:arrow-path"
+                  class="w-4 h-4 mr-2 animate-spin"
+                />
+                <Icon
+                  v-else
+                  name="heroicons:sparkles"
+                  class="w-4 h-4 mr-2"
+                />
+                {{ currentReport.aiInsights ? 'Regenerate' : 'Generate Insights' }}
+              </button>
+            </div>
+
+            <!-- Error message -->
+            <div
+              v-if="insightsError"
+              class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
+            >
+              {{ insightsError }}
+            </div>
+
+            <!-- Loading state -->
+            <div
+              v-if="isGeneratingInsights"
+              class="py-8 text-center"
+            >
               <Icon
                 name="heroicons:sparkles"
-                class="w-5 h-5 text-purple-500"
+                class="mx-auto h-8 w-8 text-purple-400 animate-pulse"
               />
-              <h3 class="font-semibold text-gray-900">
-                AI Insights
-              </h3>
+              <p class="mt-2 text-sm text-gray-500">
+                Generating insights with AI...
+              </p>
             </div>
-            <div class="prose prose-sm text-gray-600">
-              {{ currentReport.aiInsights }}
+
+            <!-- Empty state -->
+            <div
+              v-else-if="!currentReport.aiInsights"
+              class="py-8 text-center bg-gray-50 rounded-lg"
+            >
+              <Icon
+                name="heroicons:light-bulb"
+                class="mx-auto h-8 w-8 text-gray-300"
+              />
+              <p class="mt-2 text-sm text-gray-500">
+                Click "Generate Insights" to get AI-powered analysis of your report data.
+              </p>
+            </div>
+
+            <!-- Insights content -->
+            <div
+              v-else
+              class="prose prose-sm max-w-none text-gray-700"
+            >
+              <div
+                class="whitespace-pre-wrap"
+                v-html="currentReport.aiInsights.replace(/## /g, '<h4 class=\'text-lg font-semibold text-gray-900 mt-4 mb-2\'>').replace(/\n- /g, '<br>• ').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')"
+              />
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 # TamarindoReports - Module Status
 
-> Last updated: 2025-12-26 (Session 7)
+> Last updated: 2025-12-26 (Session 8)
 
 ## Overview
 
@@ -8,13 +8,13 @@
 |--------|--------|----------|-------|
 | Core (Auth/Tenant) | 🟢 Completed | 100% | - |
 | Database | 🟢 Completed | 100% | - |
-| UI Base | 🟡 In Progress | 90% | - |
+| UI Base | 🟡 In Progress | 95% | - |
 | Integrations | 🟡 In Progress | 50% | - |
-| Reports | 🟡 In Progress | 60% | - |
+| Reports | 🟡 In Progress | 75% | - |
 | Dashboards | 🟡 In Progress | 80% | - |
-| AI Insights | 🔴 Not Started | 0% | - |
+| AI Insights | 🟡 In Progress | 70% | - |
 | White Label | 🔴 Not Started | 0% | - |
-| PDF Worker | 🔴 Not Started | 0% | - |
+| PDF Worker | 🟡 In Progress | 40% | - |
 
 ---
 
@@ -123,8 +123,16 @@ Dashboards:
 - `DELETE /api/dashboards/:id` - Delete dashboard
 - `GET /api/dashboards/public/:slug` - Public dashboard view
 
+AI:
+- `POST /api/ai/insights` - Generate AI insights for report
+- `GET /api/ai/status` - Check AI service status
+
+PDF:
+- `POST /api/pdf/generate` - Generate PDF for report
+- `GET /api/pdf/status` - Check PDF service status
+
 Pending:
-- AI endpoints
+- (none)
 
 ---
 
@@ -216,11 +224,28 @@ FACEBOOK_APP_SECRET=<from Meta Developer Portal>
 ---
 
 ### AI Insights
-**Status:** 🔴 Not Started (0%)
+**Status:** 🟡 In Progress (70%)
 
-- [ ] OpenAI integration
-- [ ] Insights prompt engineering
-- [ ] Recommendations generation
+- [x] OpenAI client configuration
+- [x] Insights prompt engineering (Spanish)
+- [x] Generate insights API endpoint
+- [x] AI status check endpoint
+- [x] Mock insights for testing without API key
+- [x] UI for generating and displaying insights
+- [ ] Widget recommendations generation
+- [ ] Historical data comparison
+- [ ] Custom prompt configuration
+
+**Files:**
+- `apps/web/server/utils/ai/openai.ts` - OpenAI client
+- `apps/web/server/utils/ai/prompts.ts` - Prompt templates
+- `apps/web/server/utils/ai/insights.ts` - Insights generation
+- `apps/web/server/api/ai/*` - API endpoints
+
+**⚠️ PENDIENTE DE CONFIGURAR:**
+```
+OPENAI_API_KEY=<from platform.openai.com>
+```
 
 ---
 
@@ -234,12 +259,36 @@ FACEBOOK_APP_SECRET=<from Meta Developer Portal>
 ---
 
 ### PDF Worker
-**Status:** 🔴 Not Started (0%)
+**Status:** 🟡 In Progress (40%)
 
-- [ ] Puppeteer setup
-- [ ] BullMQ job processing
-- [ ] Report page rendering
-- [ ] R2 storage upload
+- [x] PDF generator service structure
+- [x] Generate PDF API endpoint
+- [x] PDF status check endpoint
+- [x] Mock PDF for testing
+- [x] Support for external PDF services
+- [ ] Puppeteer integration (placeholder ready)
+- [ ] BullMQ job processing for async generation
+- [ ] R2/S3 storage upload
+- [ ] PDF template styling
+
+**Files:**
+- `apps/web/server/utils/pdf/generator.ts` - PDF generation service
+- `apps/web/server/api/pdf/*` - API endpoints
+
+**⚠️ PENDIENTE DE CONFIGURAR:**
+```
+# Option 1: External PDF service
+PDF_SERVICE_URL=<browserless.io or similar>
+PDF_SERVICE_API_KEY=<api key>
+
+# Option 2: Puppeteer
+PUPPETEER_ENABLED=true
+
+# Storage for PDFs
+R2_ACCESS_KEY_ID=<cloudflare r2>
+R2_SECRET_ACCESS_KEY=<cloudflare r2>
+R2_BUCKET_NAME=tamarindo-pdfs
+```
 
 ---
 
@@ -302,10 +351,23 @@ FACEBOOK_APP_SECRET=<from Meta Developer Portal>
 - Password protection with SHA256 hashing
 - Link expiration support
 
-### Session 8: AI Insights & PDF (Next)
-- [ ] OpenAI integration
-- [ ] PDF generation with Puppeteer
-- [ ] Report insights generation
+### Session 8: AI Insights & PDF ✅
+- OpenAI client configuration and singleton
+- Prompt engineering for marketing insights (Spanish)
+- Generate insights API endpoint with mock fallback
+- AI status check endpoint
+- UI for generating and displaying insights in report editor
+- PDF generator service structure
+- Generate PDF API endpoint with mock fallback
+- PDF status check endpoint
+- Support for external PDF services (Browserless, etc.)
+- Puppeteer placeholder (ready for implementation)
+
+### Session 9: White Label & Polish (Next)
+- [ ] Branding settings UI
+- [ ] Logo upload
+- [ ] Color customization
+- [ ] Final testing and polish
 
 ---
 
