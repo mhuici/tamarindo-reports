@@ -13,6 +13,11 @@ function hashPassword(password: string): string {
   return `${salt}:${hash}`
 }
 
+// SHA256 hash for dashboard passwords (simpler, used for shareable links)
+function hashDashboardPassword(password: string): string {
+  return crypto.createHash('sha256').update(password).digest('hex')
+}
+
 async function main() {
   console.log('🌱 Seeding database...')
 
@@ -249,7 +254,7 @@ async function main() {
         clientId: 'client-acme',
         tenantId: demoTenant.id,
         isPublic: true,
-        password: 'acme2024', // In production, this should be hashed
+        password: hashDashboardPassword('acme2024'), // Hashed with SHA256
         widgets: [
           { id: 'd1', type: 'metric-card', title: 'Today Spend', metric: 'cost', format: 'currency', position: { x: 0, y: 0, w: 4, h: 1 } },
           { id: 'd2', type: 'metric-card', title: 'Today Clicks', metric: 'clicks', position: { x: 4, y: 0, w: 4, h: 1 } },
