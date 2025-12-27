@@ -2,16 +2,16 @@ import { defineEventHandler, readBody, createError } from 'h3'
 import { z } from 'zod'
 import { requireAuth } from '../../utils/auth'
 import { prisma } from '../../utils/db'
-import { generateReportPDF, isPDFServiceAvailable, generateMockPDFUrl } from '../../utils/pdf/generator'
+import { generateReportPDF, isPDFServiceAvailable } from '../../utils/pdf/generator'
+import { getMetricsForClient } from '../../utils/metrics/service'
 
 const generatePDFSchema = z.object({
   reportId: z.string().min(1),
-  useMock: z.boolean().optional().default(false),
 })
 
 /**
  * POST /api/pdf/generate
- * Generate PDF for a report
+ * Generate PDF for a report with real metrics
  */
 export default defineEventHandler(async (event) => {
   const user = requireAuth(event)
@@ -26,9 +26,9 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const { reportId, useMock } = result.data
+  const { reportId } = result.data
 
-  // Fetch report
+  // Fetch report with client and tenant info
   const report = await prisma.report.findFirst({
     where: {
       id: reportId,
@@ -37,7 +37,14 @@ export default defineEventHandler(async (event) => {
     include: {
       client: {
         select: {
+          id: true,
           name: true,
+        },
+      },
+      tenant: {
+        select: {
+          name: true,
+          branding: true,
         },
       },
     },
@@ -50,23 +57,36 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const dateRange = report.dateRange as { start: string; end: string }
+  const dateRange = report.dateRange as { start: string, end: string }
 
-  let pdfUrl: string
+  try {
+    // Get metrics for the client
+    const metrics = await getMetricsForClient(report.client.id, dateRange)
 
-  // Use mock if requested or if PDF service is not available
-  if (useMock || !isPDFServiceAvailable()) {
-    pdfUrl = generateMockPDFUrl(reportId)
-  }
-  else {
+    // Extract branding
+    const branding = report.tenant.branding as {
+      primaryColor?: string
+      secondaryColor?: string
+      logoUrl?: string
+      companyName?: string
+    } | null
+
+    // Generate PDF with metrics
     const pdfResult = await generateReportPDF({
       reportId: report.id,
       reportName: report.name,
       clientName: report.client.name,
+      tenantName: report.tenant.name,
       tenantId: user.tenantId,
       dateRange,
       widgets: report.widgets as any[],
+      metrics: {
+        totals: metrics.totals,
+        previousTotals: metrics.previousTotals,
+        byDate: metrics.byDate,
+      },
       aiInsights: report.aiInsights || undefined,
+      branding: branding || undefined,
     })
 
     if (!pdfResult.success) {
@@ -76,21 +96,36 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    pdfUrl = pdfResult.pdfUrl!
+    // Update report with PDF URL and mark as completed
+    await prisma.report.update({
+      where: { id: reportId },
+      data: {
+        pdfUrl: pdfResult.pdfUrl,
+        status: 'COMPLETED',
+      },
+    })
+
+    return {
+      success: true,
+      pdfUrl: pdfResult.pdfUrl,
+      message: 'PDF generated successfully',
+    }
   }
+  catch (error: any) {
+    console.error('PDF generation error:', error)
 
-  // Update report with PDF URL and mark as completed
-  await prisma.report.update({
-    where: { id: reportId },
-    data: {
-      pdfUrl,
-      status: 'COMPLETED',
-    },
-  })
+    // Update report with error
+    await prisma.report.update({
+      where: { id: reportId },
+      data: {
+        status: 'FAILED',
+        error: error.message || 'PDF generation failed',
+      },
+    })
 
-  return {
-    success: true,
-    pdfUrl,
-    isMock: useMock || !isPDFServiceAvailable(),
+    throw createError({
+      statusCode: 500,
+      message: error.message || 'Failed to generate PDF',
+    })
   }
 })

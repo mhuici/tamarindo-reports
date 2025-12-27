@@ -37,6 +37,9 @@ packages/db/prisma/*.db-journal
 *.generated.*
 .turbo
 
+# Generated PDFs
+apps/web/public/pdfs
+
 # Misc
 *.local
 .cache
