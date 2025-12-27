@@ -12,6 +12,9 @@ const { analyzeMetric, isSignificantChange, isLoading: isRCALoading, getCachedRe
 // Forecast composable
 const { forecastLocal, generateSampleData } = useForecast()
 
+// Narrative composable
+const { generateDashboardNarratives } = useNarrative()
+
 // State
 const dashboard = ref<any>(null)
 const isLoading = ref(true)
@@ -32,6 +35,14 @@ const isAnalyzingRCA = ref(false)
 // Forecast state
 const forecasts = ref<Map<string, any>>(new Map())
 const isGeneratingForecasts = ref(false)
+
+// Narrative state
+const narratives = ref<{
+  executiveSummary?: { narrative: string }
+  recommendations?: { narrative: string }
+  alerts?: Array<{ narrative: string }>
+} | null>(null)
+const isGeneratingNarratives = ref(false)
 
 // Fetch dashboard
 async function fetchDashboard(pwd?: string) {
@@ -95,10 +106,11 @@ async function fetchMetrics(pwd?: string) {
     const response = await $fetch<any>(`/api/metrics/public?${params.toString()}`)
     metricsData.value = response
 
-    // Analyze metrics with RCA and generate forecasts after loading
+    // Analyze metrics with RCA, generate forecasts and narratives after loading
     if (response?.hasData) {
       analyzeMetricsWithRCA()
       generateForecasts()
+      generateNarratives()
     }
   }
   catch (e) {
@@ -221,6 +233,71 @@ function getWidgetForecast(widgetId: string) {
 function canForecast(widget: any): boolean {
   const data = metricsData.value?.widgetData?.[widget.id]?.data
   return data && data.length >= 7
+}
+
+// Generate AI narratives for the dashboard
+async function generateNarratives() {
+  if (!dashboard.value?.widgets || !metricsData.value?.widgetData) return
+
+  isGeneratingNarratives.value = true
+
+  // Build metrics array from widget data
+  const metrics: Array<{
+    name: string
+    label: string
+    value: number
+    previousValue?: number
+    changePercent?: number
+    format?: string
+  }> = []
+
+  const metricWidgets = dashboard.value.widgets.filter((w: any) =>
+    (w.type === 'metric' || w.type === 'metric-card') && metricsData.value.widgetData[w.id],
+  )
+
+  for (const widget of metricWidgets) {
+    const data = metricsData.value.widgetData[widget.id]
+    if (!data?.value) continue
+
+    const changePercent = data.previousValue
+      ? ((data.value - data.previousValue) / data.previousValue) * 100
+      : 0
+
+    metrics.push({
+      name: widget.config?.metricKey || widget.id,
+      label: widget.title,
+      value: data.value,
+      previousValue: data.previousValue,
+      changePercent,
+      format: widget.config?.format,
+    })
+  }
+
+  if (metrics.length === 0) {
+    isGeneratingNarratives.value = false
+    return
+  }
+
+  try {
+    const result = await generateDashboardNarratives(
+      metrics,
+      {
+        clientName: dashboard.value.clientName || 'Cliente',
+        platform: 'mixed',
+      },
+      { tone: 'professional', language: 'es' },
+    )
+
+    if (result) {
+      narratives.value = result
+    }
+  }
+  catch (e) {
+    console.error('Failed to generate narratives:', e)
+  }
+  finally {
+    isGeneratingNarratives.value = false
+  }
 }
 
 async function handlePasswordSubmit() {
@@ -537,6 +614,18 @@ function normalizeChartData(data: Array<{ label: string, value: number }>) {
 
       <!-- Widgets -->
       <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Executive Summary -->
+        <section
+          v-if="narratives?.executiveSummary || isGeneratingNarratives"
+          class="mb-8"
+        >
+          <AiNarrativeCard
+            type="executive-summary"
+            :content="narratives?.executiveSummary?.narrative"
+            :loading="isGeneratingNarratives"
+          />
+        </section>
+
         <!-- Loading metrics -->
         <div
           v-if="isLoadingMetrics"
@@ -717,6 +806,29 @@ function normalizeChartData(data: Array<{ label: string, value: number }>) {
             </div>
           </div>
         </div>
+
+        <!-- Recommendations & Alerts -->
+        <section
+          v-if="narratives?.recommendations || narratives?.alerts?.length"
+          class="mt-8 space-y-4"
+        >
+          <!-- Alerts -->
+          <AiNarrativeCard
+            v-for="(alert, index) in narratives?.alerts || []"
+            :key="`alert-${index}`"
+            type="alert"
+            :content="alert.narrative"
+            severity="medium"
+            compact
+          />
+
+          <!-- Recommendation -->
+          <AiNarrativeCard
+            v-if="narratives?.recommendations"
+            type="recommendation"
+            :content="narratives.recommendations.narrative"
+          />
+        </section>
       </main>
 
       <!-- Footer -->
