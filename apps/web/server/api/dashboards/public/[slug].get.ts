@@ -88,8 +88,10 @@ export default defineEventHandler(async (event) => {
   return {
     requiresPassword: false,
     dashboard: {
+      id: dashboard.id,
       name: dashboard.name,
       widgets: dashboard.widgets,
+      clientId: dashboard.clientId,
       clientName: dashboard.client.name,
       tenantName: dashboard.tenant.name,
       branding: dashboard.tenant.branding,
