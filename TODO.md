@@ -1,6 +1,6 @@
 # TamarindoReports - TODO & Pendientes
 
-> Última actualización: 2025-12-27 (Post-Session 10)
+> Última actualización: 2025-12-27 (Post-Session 11)
 
 ## Resumen de Progreso
 
@@ -16,7 +16,8 @@
 | 8 | AI Insights & PDF (OpenAI, PDF structure) | ✅ |
 | 9 | White Label & Polish | ✅ |
 | 10 | Metrics Service & Real Data Integration | ✅ |
-| 11 | Testing & Polish | 🔄 Pendiente |
+| 11 | PDF Generation & UI | ✅ |
+| 12 | Testing & Polish | 🔄 Pendiente |
 
 ---
 
@@ -100,9 +101,10 @@ PUPPETEER_ENABLED=true    # Para generar PDFs localmente
 
 ### Reportes
 - [x] Conectar widgets a datos reales (via MetricsService)
+- [x] Exportar a PDF funcional (Puppeteer)
+- [x] Botón de generar/descargar PDF en UI
 - [ ] Configuración de widgets (métricas a mostrar)
 - [ ] Preview de reporte
-- [ ] Exportar a PDF funcional
 - [ ] Programación de reportes automáticos
 
 ### AI Insights
