@@ -1,6 +1,6 @@
 # TamarindoReports - TODO & Pendientes
 
-> Última actualización: 2025-12-26 (Post-Session 8)
+> Última actualización: 2025-12-27 (Post-Session 10)
 
 ## Resumen de Progreso
 
@@ -14,7 +14,9 @@
 | 6 | Report Builder (CRUD, widgets) | ✅ |
 | 7 | Dashboards (shareable, password protection) | ✅ |
 | 8 | AI Insights & PDF (OpenAI, PDF structure) | ✅ |
-| 9 | White Label & Polish | 🔄 Pendiente |
+| 9 | White Label & Polish | ✅ |
+| 10 | Metrics Service & Real Data Integration | ✅ |
+| 11 | Testing & Polish | 🔄 Pendiente |
 
 ---
 
@@ -91,13 +93,13 @@ PUPPETEER_ENABLED=true    # Para generar PDFs localmente
 
 ### Integraciones (Prioridad Alta)
 - [ ] Probar OAuth con credenciales reales
-- [ ] Fetch de cuentas/campañas de Google Ads
-- [ ] Fetch de cuentas/campañas de Facebook Ads
-- [ ] Sync automático de métricas
-- [ ] Almacenamiento de métricas en DB
+- [x] Fetch de cuentas de Google Ads (implementado)
+- [x] Fetch de cuentas de Facebook Ads (implementado)
+- [x] Sync de métricas desde APIs reales
+- [x] Almacenamiento de métricas en DB (con cache)
 
 ### Reportes
-- [ ] Conectar widgets a datos reales
+- [x] Conectar widgets a datos reales (via MetricsService)
 - [ ] Configuración de widgets (métricas a mostrar)
 - [ ] Preview de reporte
 - [ ] Exportar a PDF funcional

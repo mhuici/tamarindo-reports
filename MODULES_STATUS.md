@@ -1,6 +1,6 @@
 # TamarindoReports - Module Status
 
-> Last updated: 2025-12-26 (Session 9)
+> Last updated: 2025-12-27 (Session 10)
 
 ## Overview
 
@@ -9,8 +9,9 @@
 | Core (Auth/Tenant) | 🟢 Completed | 100% | - |
 | Database | 🟢 Completed | 100% | - |
 | UI Base | 🟢 Completed | 100% | - |
-| Integrations | 🟡 In Progress | 50% | - |
-| Reports | 🟡 In Progress | 80% | - |
+| Integrations | 🟢 Completed | 90% | - |
+| Metrics Service | 🟢 Completed | 100% | - |
+| Reports | 🟡 In Progress | 85% | - |
 | Dashboards | 🟢 Completed | 100% | - |
 | AI Insights | 🟡 In Progress | 70% | - |
 | White Label | 🟢 Completed | 100% | - |
@@ -137,20 +138,40 @@ Pending:
 ---
 
 ### Integrations
-**Status:** 🟡 In Progress (50%)
+**Status:** 🟢 Completed (90%)
 
 - [x] DataConnector interface
-- [x] Google Ads connector skeleton
-- [x] Facebook Ads connector skeleton
+- [x] Google Ads connector with real API
+- [x] Facebook Ads connector with real API
 - [x] Google OAuth flow (connect + callback)
 - [x] Facebook OAuth flow (connect + callback)
 - [x] Token encryption/storage
+- [x] Token refresh handling
 - [x] useIntegrations composable
 - [x] Integrations UI with status
 - [x] Disconnect functionality
-- [ ] Account listing (Google Ads API)
-- [ ] Metrics fetching
-- [ ] Background sync job
+- [x] Account listing (Google Ads API)
+- [x] Metrics fetching (Google Ads + Facebook Ads)
+- [ ] Background sync job (BullMQ)
+
+---
+
+### Metrics Service
+**Status:** 🟢 Completed (100%)
+
+- [x] MetricsService with sync, aggregation, caching
+- [x] API: /api/metrics/sync.post - Manual sync trigger
+- [x] API: /api/metrics/for-client.get - Get metrics for client
+- [x] API: /api/metrics/widget-data.get - Get data for specific widget
+- [x] API: /api/metrics/public.get - Public dashboard metrics
+- [x] Token refresh on expiration
+- [x] Cache metrics in DB with 1-hour TTL
+- [x] Previous period comparison calculation
+- [x] Widget data transformation
+
+**Files:**
+- `apps/web/server/utils/metrics/service.ts` - Main service
+- `apps/web/server/api/metrics/*` - API endpoints
 
 **⚠️ PENDIENTE DE CONFIGURAR Y PROBAR:**
 ```
@@ -384,11 +405,21 @@ R2_BUCKET_NAME=tamarindo-pdfs
 - Branding applied in public dashboards (header, footer)
 - TODO.md with complete project status
 
+### Session 10: Metrics Service & Real Data ✅
+- MetricsService for syncing and aggregating data
+- API endpoints for metrics (sync, for-client, widget-data, public)
+- Google Ads real API integration with google-ads-api
+- Facebook Ads real API integration with Marketing API
+- Token refresh and error handling
+- Metrics caching in database
+- Public dashboard real-time metrics integration
+- Widget data transformation
+
 ### Future Sessions (Pending)
 - [ ] Puppeteer integration for PDF generation
-- [ ] Real metrics from Google Ads / Facebook Ads
 - [ ] Email delivery for reports
 - [ ] Unit and E2E tests
+- [ ] Background sync jobs with BullMQ
 
 ---
 
