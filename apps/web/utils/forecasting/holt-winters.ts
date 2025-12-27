@@ -191,7 +191,12 @@ function generatePredictions(
   const predictions: ForecastPoint[] = []
   const lastLevel = levels[levels.length - 1]
   const lastTrend = trends[trends.length - 1]
-  const startDate = new Date(lastDate)
+
+  // Try to parse the date, fallback to today if invalid
+  let startDate = new Date(lastDate)
+  if (isNaN(startDate.getTime())) {
+    startDate = new Date()
+  }
 
   for (let h = 1; h <= periods; h++) {
     const seasonIdx = (levels.length - 1 + h) % seasonality
@@ -318,7 +323,10 @@ function generateSimpleForecast(
 
   // Generate predictions
   const predictions: ForecastPoint[] = []
-  const startDate = new Date(dates[dates.length - 1])
+  let startDate = new Date(dates[dates.length - 1])
+  if (isNaN(startDate.getTime())) {
+    startDate = new Date()
+  }
 
   for (let h = 1; h <= periods; h++) {
     const value = intercept + slope * (n - 1 + h)
