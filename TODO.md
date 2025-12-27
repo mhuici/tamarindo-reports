@@ -19,7 +19,10 @@
 | 11 | PDF Generation & UI | ✅ |
 | 12 | RCA, Forecasting, Narrative Engine (Claude AI) | ✅ |
 | 13 | Dashboard Mobile-First | ✅ |
-| 14 | Testing & Polish | 🔄 Pendiente |
+| 14 | API Bridge (Google/Facebook → ProcessedMetric) | 🔄 Pendiente |
+| 15 | Preview de Reporte + Logo Upload | 🔄 Pendiente |
+| 16 | Error Handling Producción | 🔄 Pendiente |
+| 17 | Testing & Polish | 🔄 Pendiente |
 
 ---
 
@@ -164,9 +167,65 @@ PUPPETEER_ENABLED=true    # Habilitado por defecto
 - [x] Scrollbar oculto para UX limpia
 
 ### PDF
-- [ ] Integrar Puppeteer o servicio externo
+- [x] Puppeteer local funcionando
 - [ ] Subir PDFs a R2/S3
 - [ ] Template de PDF con estilos
+
+---
+
+## Próximas Sesiones Priorizadas
+
+### Session 14: API Bridge (Google/Facebook → ProcessedMetric)
+**Objetivo:** Transformar JSON complejo de APIs a formato simplificado para AI
+
+- [ ] Mapear Google Ads API response → `ProcessedMetric[]`
+- [ ] Mapear Facebook Ads API response → `ProcessedMetric[]`
+- [ ] Normalizar nombres de métricas (CPC, CTR, ROAS, etc.)
+- [ ] Manejar diferentes monedas y formatos
+- [ ] Cache de métricas transformadas
+- [ ] Tests con datos reales de sandbox
+
+### Session 15: Preview de Reporte + Logo Upload (Prioridad Alta)
+**Por qué es crítico:**
+> "El usuario de agencia tiene pánico a que el cliente vea algo mal configurado"
+> "El logo es lo que hace que el cliente sienta que está pagando por un servicio premium"
+
+- [ ] Preview modal antes de publicar dashboard
+- [ ] Vista previa de cómo se verá en mobile
+- [ ] Upload de logo a R2/S3
+- [ ] Validación de imagen (tamaño, formato)
+- [ ] Aplicar logo en header del dashboard
+- [ ] Aplicar logo en PDF generado
+
+### Session 16: Error Handling Producción
+**Casos críticos a manejar:**
+
+1. **División por cero en RCA**
+   - [ ] Métricas con 0 clics o 0 gasto
+   - [ ] Validar datos antes de enviar a Claude
+
+2. **Tokens expirados**
+   - [ ] Detectar token expirado (401/403)
+   - [ ] UI para reconectar integración
+   - [ ] Notificación al usuario
+
+3. **Rate limits de APIs**
+   - [ ] Anthropic: límites estrictos al inicio
+   - [ ] Google/Facebook: quotas diarias
+   - [ ] Implementar retry con backoff exponencial
+   - [ ] Cola de requests si es necesario
+
+4. **Fallbacks graceful**
+   - [ ] Si AI falla → mostrar datos sin narrativa
+   - [ ] Si integración falla → mostrar último cache
+   - [ ] Mensajes de error user-friendly
+
+### Session 17: Testing & Polish
+- [ ] Test E2E: crear cliente → dashboard → compartir
+- [ ] Performance: <3s load time
+- [ ] Lighthouse score >90
+- [ ] Documentación de API
+- [ ] Video demo (2 min)
 
 ### White Label (Session 9)
 - [ ] UI de configuración de branding
