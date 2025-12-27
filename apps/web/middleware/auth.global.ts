@@ -8,7 +8,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   // Public routes that don't require authentication
   const publicRoutes = ['/', '/login', '/register', '/forgot-password', '/reset-password']
-  const isPublicRoute = publicRoutes.includes(to.path)
+  const isPublicRoute = publicRoutes.includes(to.path) || to.path.startsWith('/d/')
 
   // Fetch user if not loaded yet (first load or refresh)
   if (user.value === null && isLoading.value) {
