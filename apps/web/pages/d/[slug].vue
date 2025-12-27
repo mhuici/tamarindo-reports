@@ -75,11 +75,22 @@ onMounted(() => {
   fetchDashboard()
 })
 
-// Get branding colors
-const brandColor = computed(() => {
-  const branding = dashboard.value?.branding as any
-  return branding?.primaryColor || '#f97316' // tamarindo default
+// Get branding
+const branding = computed(() => {
+  const b = dashboard.value?.branding as any
+  return {
+    primaryColor: b?.primaryColor || '#f97316',
+    secondaryColor: b?.secondaryColor || '#1f2937',
+    logoUrl: b?.logoUrl || '',
+    companyName: b?.companyName || dashboard.value?.tenantName || 'TamarindoReports',
+  }
 })
+
+// Dynamic styles based on branding
+const brandStyles = computed(() => ({
+  '--brand-primary': branding.value.primaryColor,
+  '--brand-secondary': branding.value.secondaryColor,
+}))
 
 function getWidgetIcon(type: string) {
   const icons: Record<string, string> = {
@@ -193,17 +204,37 @@ function getWidgetIcon(type: string) {
     </div>
 
     <!-- Dashboard content -->
-    <div v-else-if="dashboard">
-      <!-- Header -->
-      <header class="bg-white border-b border-gray-200">
+    <div
+      v-else-if="dashboard"
+      :style="brandStyles"
+    >
+      <!-- Header with branding -->
+      <header
+        class="border-b"
+        :style="{ backgroundColor: branding.secondaryColor, borderColor: branding.secondaryColor }"
+      >
         <div class="max-w-7xl mx-auto px-4 py-6">
-          <h1 class="text-2xl font-bold text-gray-900">
+          <div class="flex items-center gap-4">
+            <!-- Logo or company name -->
+            <img
+              v-if="branding.logoUrl"
+              :src="branding.logoUrl"
+              :alt="branding.companyName"
+              class="h-8 object-contain"
+            >
+            <span
+              v-else
+              class="text-lg font-bold text-white"
+            >
+              {{ branding.companyName }}
+            </span>
+          </div>
+
+          <h1 class="text-2xl font-bold text-white mt-4">
             {{ dashboard.name }}
           </h1>
-          <div class="flex items-center gap-4 mt-2 text-sm text-gray-500">
+          <div class="flex items-center gap-4 mt-2 text-sm text-white/70">
             <span>{{ dashboard.clientName }}</span>
-            <span>&bull;</span>
-            <span>{{ dashboard.tenantName }}</span>
           </div>
         </div>
       </header>
@@ -267,8 +298,25 @@ function getWidgetIcon(type: string) {
 
       <!-- Footer -->
       <footer class="border-t border-gray-200 mt-8">
-        <div class="max-w-7xl mx-auto px-4 py-6 text-center text-sm text-gray-500">
-          Powered by TamarindoReports
+        <div class="max-w-7xl mx-auto px-4 py-6 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <img
+              v-if="branding.logoUrl"
+              :src="branding.logoUrl"
+              :alt="branding.companyName"
+              class="h-6 object-contain opacity-50"
+            >
+            <span
+              v-else
+              class="text-sm font-medium"
+              :style="{ color: branding.primaryColor }"
+            >
+              {{ branding.companyName }}
+            </span>
+          </div>
+          <span class="text-sm text-gray-400">
+            Powered by TamarindoReports
+          </span>
         </div>
       </footer>
     </div>

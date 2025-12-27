@@ -1,0 +1,172 @@
+# TamarindoReports - TODO & Pendientes
+
+> Última actualización: 2025-12-26 (Post-Session 8)
+
+## Resumen de Progreso
+
+| Sesión | Descripción | Estado |
+|--------|-------------|--------|
+| 1 | Foundation (monorepo, Nuxt 4, Tailwind) | ✅ |
+| 2 | Database Setup (Docker, Prisma, seed) | ✅ |
+| 3 | Auth System (login, register, middleware) | ✅ |
+| 4 | Multi-tenant Core (tenant, clients, settings) | ✅ |
+| 5 | Integrations (Google Ads, Facebook Ads OAuth) | ✅ |
+| 6 | Report Builder (CRUD, widgets) | ✅ |
+| 7 | Dashboards (shareable, password protection) | ✅ |
+| 8 | AI Insights & PDF (OpenAI, PDF structure) | ✅ |
+| 9 | White Label & Polish | 🔄 Pendiente |
+
+---
+
+## Funcionalidades Completas
+
+### Core
+- [x] Autenticación JWT con cookies httpOnly
+- [x] Registro de usuarios con tenant
+- [x] Login/logout
+- [x] Middleware global de auth
+- [x] Middleware de tenant
+- [x] CRUD de clientes
+- [x] Settings (perfil, contraseña)
+
+### Integraciones (Estructura Lista)
+- [x] OAuth flow Google Ads
+- [x] OAuth flow Facebook Ads
+- [x] Almacenamiento de tokens encriptados
+- [x] UI de conexión/desconexión
+- [ ] ⚠️ **Requiere configurar credenciales reales**
+
+### Reportes
+- [x] CRUD completo
+- [x] Filtros por tipo/estado
+- [x] Editor con widgets
+- [x] Widgets: Metric, Chart, Table, Text
+- [x] AI Insights con OpenAI
+- [ ] ⚠️ **Requiere OPENAI_API_KEY para insights reales**
+
+### Dashboards
+- [x] CRUD completo
+- [x] Links compartibles con slug único
+- [x] Protección con contraseña
+- [x] Expiración de links
+- [x] Vista pública /d/[slug]
+
+### AI & PDF
+- [x] Estructura OpenAI client
+- [x] Prompts para insights de marketing
+- [x] Mock insights para testing
+- [x] Estructura PDF generator
+- [x] Soporte para servicios externos
+- [ ] ⚠️ **Requiere configurar OpenAI/PDF service**
+
+---
+
+## Configuración Pendiente (Crítico)
+
+### Variables de Entorno Requeridas
+
+```bash
+# Ya configuradas (desarrollo)
+DATABASE_URL="postgresql://..."
+JWT_SECRET="..."
+ENCRYPTION_KEY="..."
+
+# Pendientes de configurar
+OPENAI_API_KEY=           # Para AI insights
+GOOGLE_CLIENT_ID=         # Para Google Ads
+GOOGLE_CLIENT_SECRET=     # Para Google Ads
+FACEBOOK_APP_ID=          # Para Facebook Ads
+FACEBOOK_APP_SECRET=      # Para Facebook Ads
+
+# Opcionales (PDF)
+PDF_SERVICE_URL=          # Browserless.io u otro
+PDF_SERVICE_API_KEY=      # API key del servicio
+# O alternativamente:
+PUPPETEER_ENABLED=true    # Para generar PDFs localmente
+```
+
+---
+
+## Funcionalidades Pendientes por Módulo
+
+### Integraciones (Prioridad Alta)
+- [ ] Probar OAuth con credenciales reales
+- [ ] Fetch de cuentas/campañas de Google Ads
+- [ ] Fetch de cuentas/campañas de Facebook Ads
+- [ ] Sync automático de métricas
+- [ ] Almacenamiento de métricas en DB
+
+### Reportes
+- [ ] Conectar widgets a datos reales
+- [ ] Configuración de widgets (métricas a mostrar)
+- [ ] Preview de reporte
+- [ ] Exportar a PDF funcional
+- [ ] Programación de reportes automáticos
+
+### AI Insights
+- [ ] Probar con API key real
+- [ ] Incluir métricas reales en prompts
+- [ ] Recomendaciones de widgets
+
+### PDF
+- [ ] Integrar Puppeteer o servicio externo
+- [ ] Subir PDFs a R2/S3
+- [ ] Template de PDF con estilos
+
+### White Label (Session 9)
+- [ ] UI de configuración de branding
+- [ ] Upload de logo
+- [ ] Personalización de colores
+- [ ] Aplicar branding en dashboards públicos
+
+---
+
+## Testing Pendiente
+
+Ver `TESTING.md` para checklist completo.
+
+### Prioridad Alta
+- [ ] Probar flujo completo: crear cliente → crear reporte → generar insights
+- [ ] Probar dashboard público con contraseña
+- [ ] Probar OAuth con credenciales reales
+
+### Prioridad Media
+- [ ] Tests de seguridad (XSS, CSRF, SQL injection)
+- [ ] Tests de performance con datos grandes
+
+---
+
+## Pre-Producción
+
+- [ ] Configurar todas las variables de entorno
+- [ ] Migrar DB a producción (Railway)
+- [ ] Configurar dominio y SSL
+- [ ] Actualizar redirect URIs de OAuth
+- [ ] Configurar almacenamiento de PDFs
+- [ ] Configurar monitoreo (Sentry, etc.)
+- [ ] Backups de base de datos
+
+---
+
+## Notas Técnicas
+
+### Archivos Clave
+- `apps/web/server/utils/auth.ts` - JWT utilities
+- `apps/web/composables/` - Estado global (useAuth, useClients, useReports, useDashboards)
+- `apps/web/server/api/` - Todos los endpoints
+- `packages/db/prisma/schema.prisma` - Modelo de datos
+
+### Comandos de Desarrollo
+```bash
+# Iniciar desarrollo
+docker-compose up -d && pnpm dev
+
+# Base de datos
+pnpm db:push    # Aplicar schema
+pnpm db:seed    # Datos de demo
+
+# Credenciales de demo
+Email: admin@demo.agency
+Password: demo123
+Tenant: /demo
+```

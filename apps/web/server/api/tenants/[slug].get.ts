@@ -24,11 +24,13 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Return only public info
+  // Return public info wrapped in tenant object
   return {
-    id: tenant.id,
-    name: tenant.name,
-    slug: tenant.slug,
-    branding: tenant.branding,
+    tenant: {
+      id: tenant.id,
+      name: tenant.name,
+      slug: tenant.slug,
+      branding: tenant.branding,
+    },
   }
 })
