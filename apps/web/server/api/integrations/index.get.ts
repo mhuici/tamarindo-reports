@@ -17,8 +17,9 @@ export default defineEventHandler(async (event) => {
       id: true,
       name: true,
       type: true,
-      status: true,
-      lastSync: true,
+      isActive: true,
+      lastSyncAt: true,
+      syncError: true,
       createdAt: true,
       _count: {
         select: {
@@ -36,8 +37,9 @@ export default defineEventHandler(async (event) => {
       id: ds.id,
       name: ds.name,
       type: ds.type,
-      status: ds.status,
-      lastSync: ds.lastSync,
+      isActive: ds.isActive,
+      lastSyncAt: ds.lastSyncAt,
+      syncError: ds.syncError,
       createdAt: ds.createdAt,
       accountsCount: ds._count.platformAccounts,
     })),
