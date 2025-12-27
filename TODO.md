@@ -75,19 +75,29 @@ DATABASE_URL="postgresql://..."
 JWT_SECRET="..."
 ENCRYPTION_KEY="..."
 
-# Pendientes de configurar
-OPENAI_API_KEY=           # Para AI insights
-GOOGLE_CLIENT_ID=         # Para Google Ads
-GOOGLE_CLIENT_SECRET=     # Para Google Ads
-FACEBOOK_APP_ID=          # Para Facebook Ads
-FACEBOOK_APP_SECRET=      # Para Facebook Ads
+# AI - Claude (Anthropic) - PENDIENTE
+ANTHROPIC_API_KEY=        # Para RCA, Forecasting, Narrative Engine
+                          # Obtener en: https://console.anthropic.com/settings/keys
+                          # Costo estimado: ~$0.08 por reporte completo
 
-# Opcionales (PDF)
-PDF_SERVICE_URL=          # Browserless.io u otro
-PDF_SERVICE_API_KEY=      # API key del servicio
-# O alternativamente:
-PUPPETEER_ENABLED=true    # Para generar PDFs localmente
+# AI - OpenAI (legacy) - Opcional
+OPENAI_API_KEY=           # Para AI insights legacy
+
+# Integraciones - Data Real - PENDIENTE
+GOOGLE_CLIENT_ID=         # Para Google Ads OAuth
+GOOGLE_CLIENT_SECRET=     # Obtener en: https://console.cloud.google.com/apis/credentials
+FACEBOOK_APP_ID=          # Para Facebook Ads OAuth
+FACEBOOK_APP_SECRET=      # Obtener en: https://developers.facebook.com/apps/
+
+# PDF (ya funciona con Puppeteer local)
+PUPPETEER_ENABLED=true    # Habilitado por defecto
 ```
+
+### Checklist Pre-Producción
+- [ ] Agregar créditos a Anthropic API (~$5-10 para testing)
+- [ ] Crear proyecto en Google Cloud Console y habilitar Google Ads API
+- [ ] Crear app en Facebook Developers y solicitar permisos ads_read
+- [ ] Configurar redirect URIs para OAuth en producción
 
 ---
 
