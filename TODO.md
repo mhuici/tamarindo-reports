@@ -17,7 +17,7 @@
 | 9 | White Label & Polish | ✅ |
 | 10 | Metrics Service & Real Data Integration | ✅ |
 | 11 | PDF Generation & UI | ✅ |
-| 12 | RCA Agent (Claude AI) | ✅ |
+| 12 | RCA, Forecasting, Narrative Engine (Claude AI) | ✅ |
 | 13 | Testing & Polish | 🔄 Pendiente |
 
 ---
@@ -130,6 +130,18 @@ PUPPETEER_ENABLED=true    # Para generar PDFs localmente
 - [x] Composable `useForecast()` para frontend
 - [x] Componente `ForecastChart.vue` con visualización SVG
 - [x] Integración en widgets de gráfico de línea
+
+### AI Narrative Engine - Session 12
+- [x] Prompts con identidad "Senior Marketing Strategist"
+- [x] Adaptación de tono (professional/casual/technical/bold)
+- [x] CORE RULES (no alucinaciones, números humanizados, una sola acción)
+- [x] Endpoint `/api/ai/narrative` (single + dashboard mode)
+- [x] Motor de narrativas con Claude + mock fallback
+- [x] Composable `useNarrative()` para frontend
+- [x] Componente `NarrativeCard.vue` con estilos por tipo
+- [x] Tipos: executive-summary, widget-insight, recommendation, alert
+- [x] Integración en dashboard (resumen, recomendaciones, alertas)
+- [ ] Configurar `ANTHROPIC_API_KEY` para usar Claude real
 
 ### PDF
 - [ ] Integrar Puppeteer o servicio externo
