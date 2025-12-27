@@ -13,6 +13,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
     "@iconify-json/heroicons": "^1.2.2",
     "@iconify-json/lucide": "^1.2.18",
     "@nuxt/icon": "^1.10.3",

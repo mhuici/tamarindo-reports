@@ -6,6 +6,9 @@ definePageMeta({
 const route = useRoute()
 const slug = computed(() => route.params.slug as string)
 
+// RCA composable for AI insights
+const { analyzeMetric, isSignificantChange, isLoading: isRCALoading, getCachedResult } = useRCA()
+
 // State
 const dashboard = ref<any>(null)
 const isLoading = ref(true)
@@ -18,6 +21,10 @@ const passwordError = ref('')
 // Metrics state
 const metricsData = ref<any>(null)
 const isLoadingMetrics = ref(false)
+
+// RCA insights state
+const rcaInsights = ref<Map<string, any>>(new Map())
+const isAnalyzingRCA = ref(false)
 
 // Fetch dashboard
 async function fetchDashboard(pwd?: string) {
@@ -80,6 +87,11 @@ async function fetchMetrics(pwd?: string) {
 
     const response = await $fetch<any>(`/api/metrics/public?${params.toString()}`)
     metricsData.value = response
+
+    // Analyze metrics with RCA after loading
+    if (response?.hasData) {
+      analyzeMetricsWithRCA()
+    }
   }
   catch (e) {
     console.error('Failed to load metrics:', e)
@@ -89,6 +101,71 @@ async function fetchMetrics(pwd?: string) {
   finally {
     isLoadingMetrics.value = false
   }
+}
+
+// Analyze metrics with significant changes using RCA
+async function analyzeMetricsWithRCA() {
+  if (!dashboard.value?.widgets || !metricsData.value?.widgetData) return
+
+  isAnalyzingRCA.value = true
+
+  const context = {
+    clientName: dashboard.value.clientName || 'Cliente',
+    platform: 'mixed', // Could be determined from integrations
+    dateRange: {
+      start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      end: new Date().toISOString().split('T')[0],
+    },
+  }
+
+  // Find metric widgets with significant changes
+  const metricWidgets = dashboard.value.widgets.filter((w: any) =>
+    (w.type === 'metric' || w.type === 'metric-card') && metricsData.value.widgetData[w.id],
+  )
+
+  // Analyze each metric widget
+  for (const widget of metricWidgets) {
+    const data = metricsData.value.widgetData[widget.id]
+    if (!data?.value || !data?.previousValue) continue
+
+    const currentValue = data.value
+    const previousValue = data.previousValue
+
+    if (isSignificantChange(currentValue, previousValue)) {
+      try {
+        const result = await analyzeMetric(
+          {
+            metricName: widget.config?.metricKey || widget.id,
+            metricLabel: widget.title,
+            currentValue,
+            previousValue,
+          },
+          context,
+        )
+
+        if (result) {
+          rcaInsights.value.set(widget.id, result)
+        }
+      }
+      catch (e) {
+        console.error('RCA analysis failed for widget:', widget.id, e)
+      }
+    }
+  }
+
+  isAnalyzingRCA.value = false
+}
+
+// Get RCA insight for a widget
+function getWidgetInsight(widgetId: string) {
+  return rcaInsights.value.get(widgetId)
+}
+
+// Check if widget has significant change
+function widgetHasSignificantChange(widget: any): boolean {
+  const data = metricsData.value?.widgetData?.[widget.id]
+  if (!data?.value || !data?.previousValue) return false
+  return isSignificantChange(data.value, data.previousValue)
 }
 
 async function handlePasswordSubmit() {
@@ -492,6 +569,14 @@ function normalizeChartData(data: Array<{ label: string, value: number }>) {
                     Sin datos de integración
                   </p>
                 </div>
+
+                <!-- AI Insight for significant changes -->
+                <AiWidgetInsight
+                  v-if="widgetHasSignificantChange(widget) || getWidgetInsight(widget.id)"
+                  :summary="getWidgetInsight(widget.id)?.summary"
+                  :causes="getWidgetInsight(widget.id)?.causes"
+                  :loading="isAnalyzingRCA && !getWidgetInsight(widget.id)"
+                />
               </template>
 
               <!-- Line chart widget -->

@@ -1,6 +1,6 @@
 # TamarindoReports - TODO & Pendientes
 
-> Última actualización: 2025-12-27 (Post-Session 11)
+> Última actualización: 2025-12-27 (Post-Session 12)
 
 ## Resumen de Progreso
 
@@ -17,7 +17,8 @@
 | 9 | White Label & Polish | ✅ |
 | 10 | Metrics Service & Real Data Integration | ✅ |
 | 11 | PDF Generation & UI | ✅ |
-| 12 | Testing & Polish | 🔄 Pendiente |
+| 12 | RCA Agent (Claude AI) | ✅ |
+| 13 | Testing & Polish | 🔄 Pendiente |
 
 ---
 
@@ -111,6 +112,16 @@ PUPPETEER_ENABLED=true    # Para generar PDFs localmente
 - [ ] Probar con API key real
 - [ ] Incluir métricas reales en prompts
 - [ ] Recomendaciones de widgets
+
+### AI Root Cause Analysis (RCA) - Session 12
+- [x] Cliente Claude (Anthropic SDK)
+- [x] RCA Agent con análisis de cambios significativos (>10%)
+- [x] Endpoint `/api/ai/rca` (single + batch mode)
+- [x] Mock fallback cuando no hay API key
+- [x] Composable `useRCA()` para frontend
+- [x] Componente `WidgetInsight.vue` para mostrar análisis
+- [x] Integración en dashboard público `/d/[slug]`
+- [ ] Configurar `ANTHROPIC_API_KEY` para usar Claude real
 
 ### PDF
 - [ ] Integrar Puppeteer o servicio externo
