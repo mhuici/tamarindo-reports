@@ -3,6 +3,10 @@ import type { DataConnector } from '@tamarindo/types'
 // Re-export types
 export type { DataConnector, OAuthTokens, Account, NormalizedMetrics, DateRange } from '@tamarindo/types'
 
+// Re-export mock utilities
+export { shouldUseMockData, getMockDataMessage, generateMockMetrics, generateMockAccounts } from './mock/data-generator'
+export { createMockGoogleAdsConnector, createMockFacebookAdsConnector } from './mock'
+
 // Connector registry
 const connectors = new Map<string, DataConnector>()
 

@@ -2,6 +2,11 @@ import type { DateRange, NormalizedMetrics, OAuthTokens } from '@tamarindo/types
 import { prisma, decrypt, encrypt } from '@tamarindo/db'
 import { createGoogleAdsConnector } from '@tamarindo/integrations/google-ads'
 import { createFacebookAdsConnector } from '@tamarindo/integrations/facebook-ads'
+import {
+  createMockGoogleAdsConnector,
+  createMockFacebookAdsConnector,
+  generateMockMetrics,
+} from '@tamarindo/integrations'
 
 // Environment variables
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ''
@@ -9,6 +14,9 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ''
 const GOOGLE_ADS_DEVELOPER_TOKEN = process.env.GOOGLE_ADS_DEVELOPER_TOKEN || ''
 const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID || ''
 const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET || ''
+
+// Check if real credentials are configured
+const USE_MOCK_DATA = !GOOGLE_CLIENT_ID && !FACEBOOK_APP_ID
 
 // Cache TTL: 1 hour for current day data
 const CACHE_TTL_MS = 60 * 60 * 1000
@@ -32,16 +40,25 @@ export interface WidgetData {
 
 /**
  * Get connector instance for a data source type
+ * Uses mock connectors when no real credentials are configured
  */
 function getConnector(type: string) {
   switch (type) {
     case 'GOOGLE_ADS':
+      if (USE_MOCK_DATA || !GOOGLE_CLIENT_ID) {
+        console.log('[Metrics] Using mock Google Ads connector (no credentials)')
+        return createMockGoogleAdsConnector()
+      }
       return createGoogleAdsConnector(
         GOOGLE_CLIENT_ID,
         GOOGLE_CLIENT_SECRET,
         GOOGLE_ADS_DEVELOPER_TOKEN,
       )
     case 'FACEBOOK_ADS':
+      if (USE_MOCK_DATA || !FACEBOOK_APP_ID) {
+        console.log('[Metrics] Using mock Facebook Ads connector (no credentials)')
+        return createMockFacebookAdsConnector()
+      }
       return createFacebookAdsConnector(FACEBOOK_APP_ID, FACEBOOK_APP_SECRET)
     default:
       throw new Error(`Unsupported data source type: ${type}`)
@@ -198,6 +215,83 @@ function needsSync(lastSyncAt: Date | null): boolean {
 }
 
 /**
+ * Generate demo metrics for clients without integrations
+ */
+function generateDemoMetricsForClient(
+  clientId: string,
+  dateRange: DateRange,
+): AggregatedMetrics {
+  // Generate mock data for both platforms
+  const googleMetrics = generateMockMetrics('google-ads', 'demo-google', dateRange, {
+    profile: 'ecommerce',
+    trend: 'growing',
+  })
+
+  const facebookMetrics = generateMockMetrics('facebook-ads', 'demo-facebook', dateRange, {
+    profile: 'leadgen',
+    trend: 'stable',
+  })
+
+  // Aggregate totals
+  const totals: Record<string, number> = {}
+  const previousTotals: Record<string, number> = {}
+  const byDate = new Map<string, Record<string, number>>()
+  const bySource: Record<string, Record<string, number>> = {
+    google_ads: {},
+    facebook_ads: {},
+  }
+
+  // Process Google metrics
+  for (const dataPoint of googleMetrics.data) {
+    for (const [key, value] of Object.entries(dataPoint.metrics)) {
+      totals[key] = (totals[key] || 0) + value
+      bySource.google_ads[key] = (bySource.google_ads[key] || 0) + value
+
+      const dateMetrics = byDate.get(dataPoint.date) || {}
+      dateMetrics[key] = (dateMetrics[key] || 0) + value
+      byDate.set(dataPoint.date, dateMetrics)
+    }
+  }
+
+  // Process Facebook metrics
+  for (const dataPoint of facebookMetrics.data) {
+    for (const [key, value] of Object.entries(dataPoint.metrics)) {
+      totals[key] = (totals[key] || 0) + value
+      bySource.facebook_ads[key] = (bySource.facebook_ads[key] || 0) + value
+
+      const dateMetrics = byDate.get(dataPoint.date) || {}
+      dateMetrics[key] = (dateMetrics[key] || 0) + value
+      byDate.set(dataPoint.date, dateMetrics)
+    }
+  }
+
+  // Generate previous period (same pattern but slightly different)
+  const periodLength = new Date(dateRange.end).getTime() - new Date(dateRange.start).getTime()
+  const previousStart = new Date(new Date(dateRange.start).getTime() - periodLength)
+  const previousEnd = new Date(new Date(dateRange.start).getTime() - 1)
+
+  const previousGoogleMetrics = generateMockMetrics('google-ads', 'demo-google', {
+    start: previousStart.toISOString().split('T')[0],
+    end: previousEnd.toISOString().split('T')[0],
+  }, { profile: 'ecommerce', trend: 'stable' })
+
+  for (const dataPoint of previousGoogleMetrics.data) {
+    for (const [key, value] of Object.entries(dataPoint.metrics)) {
+      previousTotals[key] = (previousTotals[key] || 0) + value
+    }
+  }
+
+  return {
+    clientId,
+    dateRange,
+    totals,
+    previousTotals,
+    byDate: Array.from(byDate.entries()).map(([date, metrics]) => ({ date, metrics })),
+    bySource,
+  }
+}
+
+/**
  * Get metrics for a client, syncing if necessary
  */
 export async function getMetricsForClient(
@@ -218,7 +312,13 @@ export async function getMetricsForClient(
   })
 
   if (clientAccounts.length === 0) {
-    // No integrations connected, return empty metrics
+    // No integrations connected - return demo data if mock mode enabled
+    if (USE_MOCK_DATA) {
+      console.log('[Metrics] No integrations for client, generating demo data')
+      return generateDemoMetricsForClient(clientId, dateRange)
+    }
+
+    // No mock mode, return empty
     return {
       clientId,
       dateRange,
