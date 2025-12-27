@@ -123,6 +123,14 @@ PUPPETEER_ENABLED=true    # Para generar PDFs localmente
 - [x] Integración en dashboard público `/d/[slug]`
 - [ ] Configurar `ANTHROPIC_API_KEY` para usar Claude real
 
+### AI Forecasting (Holt-Winters) - Session 12
+- [x] Algoritmo Holt-Winters triple exponential smoothing
+- [x] Intervalos de confianza 80% y 95%
+- [x] Endpoint `/api/ai/forecast`
+- [x] Composable `useForecast()` para frontend
+- [x] Componente `ForecastChart.vue` con visualización SVG
+- [x] Integración en widgets de gráfico de línea
+
 ### PDF
 - [ ] Integrar Puppeteer o servicio externo
 - [ ] Subir PDFs a R2/S3

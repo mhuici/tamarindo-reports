@@ -9,6 +9,9 @@ const slug = computed(() => route.params.slug as string)
 // RCA composable for AI insights
 const { analyzeMetric, isSignificantChange, isLoading: isRCALoading, getCachedResult } = useRCA()
 
+// Forecast composable
+const { forecastLocal, generateSampleData } = useForecast()
+
 // State
 const dashboard = ref<any>(null)
 const isLoading = ref(true)
@@ -25,6 +28,10 @@ const isLoadingMetrics = ref(false)
 // RCA insights state
 const rcaInsights = ref<Map<string, any>>(new Map())
 const isAnalyzingRCA = ref(false)
+
+// Forecast state
+const forecasts = ref<Map<string, any>>(new Map())
+const isGeneratingForecasts = ref(false)
 
 // Fetch dashboard
 async function fetchDashboard(pwd?: string) {
@@ -88,9 +95,10 @@ async function fetchMetrics(pwd?: string) {
     const response = await $fetch<any>(`/api/metrics/public?${params.toString()}`)
     metricsData.value = response
 
-    // Analyze metrics with RCA after loading
+    // Analyze metrics with RCA and generate forecasts after loading
     if (response?.hasData) {
       analyzeMetricsWithRCA()
+      generateForecasts()
     }
   }
   catch (e) {
@@ -166,6 +174,53 @@ function widgetHasSignificantChange(widget: any): boolean {
   const data = metricsData.value?.widgetData?.[widget.id]
   if (!data?.value || !data?.previousValue) return false
   return isSignificantChange(data.value, data.previousValue)
+}
+
+// Generate forecasts for line chart widgets
+function generateForecasts() {
+  if (!dashboard.value?.widgets || !metricsData.value?.widgetData) return
+
+  isGeneratingForecasts.value = true
+
+  const chartWidgets = dashboard.value.widgets.filter((w: any) =>
+    w.type === 'line-chart' && metricsData.value.widgetData[w.id]?.data?.length >= 7,
+  )
+
+  for (const widget of chartWidgets) {
+    const widgetData = metricsData.value.widgetData[widget.id]
+    if (!widgetData?.data) continue
+
+    // Extract values from chart data
+    const values = widgetData.data.map((d: any) => d.value || 0)
+    const dates = widgetData.data.map((d: any) => d.label || d.date)
+
+    try {
+      const result = forecastLocal({
+        data: values,
+        dates,
+        metricName: widget.config?.metricKey || widget.id,
+        metricLabel: widget.title,
+      })
+
+      forecasts.value.set(widget.id, result)
+    }
+    catch (e) {
+      console.error('Forecast failed for widget:', widget.id, e)
+    }
+  }
+
+  isGeneratingForecasts.value = false
+}
+
+// Get forecast for a widget
+function getWidgetForecast(widgetId: string) {
+  return forecasts.value.get(widgetId)
+}
+
+// Check if widget has enough data for forecast
+function canForecast(widget: any): boolean {
+  const data = metricsData.value?.widgetData?.[widget.id]?.data
+  return data && data.length >= 7
 }
 
 async function handlePasswordSubmit() {
@@ -581,28 +636,39 @@ function normalizeChartData(data: Array<{ label: string, value: number }>) {
 
               <!-- Line chart widget -->
               <template v-else-if="widget.type === 'line-chart'">
-                <div
-                  v-if="getWidgetData(widget)?.data?.length > 0"
-                  class="h-40 flex items-end justify-between gap-2 px-2"
-                >
+                <!-- With forecast -->
+                <AiForecastChart
+                  v-if="getWidgetForecast(widget.id)"
+                  :title="'Proyección: ' + widget.title"
+                  :data="getWidgetForecast(widget.id)"
+                  :loading="isGeneratingForecasts"
+                  :height="180"
+                />
+                <!-- Without forecast (basic chart) -->
+                <template v-else>
                   <div
-                    v-for="(item, i) in normalizeChartData(getWidgetData(widget)?.data || [])"
-                    :key="i"
-                    class="flex-1 flex flex-col items-center gap-2"
+                    v-if="getWidgetData(widget)?.data?.length > 0"
+                    class="h-40 flex items-end justify-between gap-2 px-2"
                   >
                     <div
-                      class="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-lg transition-all hover:from-blue-600 hover:to-blue-500"
-                      :style="{ height: `${item.height}%` }"
-                    />
-                    <span class="text-xs text-gray-500">{{ item.label }}</span>
+                      v-for="(item, i) in normalizeChartData(getWidgetData(widget)?.data || [])"
+                      :key="i"
+                      class="flex-1 flex flex-col items-center gap-2"
+                    >
+                      <div
+                        class="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-lg transition-all hover:from-blue-600 hover:to-blue-500"
+                        :style="{ height: `${item.height}%` }"
+                      />
+                      <span class="text-xs text-gray-500">{{ item.label }}</span>
+                    </div>
                   </div>
-                </div>
-                <div
-                  v-else
-                  class="h-40 flex items-center justify-center"
-                >
-                  <p class="text-sm text-gray-400">Sin datos disponibles</p>
-                </div>
+                  <div
+                    v-else
+                    class="h-40 flex items-center justify-center"
+                  >
+                    <p class="text-sm text-gray-400">Sin datos disponibles</p>
+                  </div>
+                </template>
               </template>
 
               <!-- Bar chart widget -->
