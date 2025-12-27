@@ -132,6 +132,22 @@ Pending:
 - [ ] Metrics fetching
 - [ ] Background sync job
 
+**⚠️ PENDIENTE DE CONFIGURAR Y PROBAR:**
+```
+# Requiere configurar en .env:
+GOOGLE_CLIENT_ID=<from Google Cloud Console>
+GOOGLE_CLIENT_SECRET=<from Google Cloud Console>
+FACEBOOK_APP_ID=<from Meta Developer Portal>
+FACEBOOK_APP_SECRET=<from Meta Developer Portal>
+
+# También requiere:
+1. Crear proyecto en Google Cloud Console
+2. Habilitar Google Ads API
+3. Configurar OAuth consent screen
+4. Crear app en Meta Developer Portal
+5. Configurar redirect URIs en ambos
+```
+
 **Files:**
 - `apps/web/server/api/integrations/*` - OAuth endpoints
 - `apps/web/composables/useIntegrations.ts` - State management
