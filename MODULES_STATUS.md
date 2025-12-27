@@ -1,6 +1,6 @@
 # TamarindoReports - Module Status
 
-> Last updated: 2025-12-26 (Session 5)
+> Last updated: 2025-12-26 (Session 6)
 
 ## Overview
 
@@ -8,9 +8,9 @@
 |--------|--------|----------|-------|
 | Core (Auth/Tenant) | 🟢 Completed | 100% | - |
 | Database | 🟢 Completed | 100% | - |
-| UI Base | 🟡 In Progress | 80% | - |
+| UI Base | 🟡 In Progress | 85% | - |
 | Integrations | 🟡 In Progress | 50% | - |
-| Reports | 🔴 Not Started | 0% | - |
+| Reports | 🟡 In Progress | 60% | - |
 | Dashboards | 🔴 Not Started | 0% | - |
 | AI Insights | 🔴 Not Started | 0% | - |
 | White Label | 🔴 Not Started | 0% | - |
@@ -108,10 +108,15 @@ Implemented:
 - `PUT /api/clients/:id` - Update client
 - `DELETE /api/clients/:id` - Delete client
 
+Reports:
+- `GET /api/reports` - List reports (with filters)
+- `POST /api/reports` - Create report
+- `GET /api/reports/:id` - Get report details
+- `PUT /api/reports/:id` - Update report
+- `DELETE /api/reports/:id` - Delete report
+
 Pending:
-- Reports CRUD
 - Dashboards CRUD
-- Integrations OAuth
 - AI endpoints
 
 ---
@@ -156,14 +161,26 @@ FACEBOOK_APP_SECRET=<from Meta Developer Portal>
 ---
 
 ### Reports
-**Status:** 🔴 Not Started (0%)
+**Status:** 🟡 In Progress (60%)
 
-- [ ] Report builder UI
-- [ ] Widget system
-- [ ] Drag & drop
-- [ ] Report preview
+- [x] Report CRUD API (list, create, read, update, delete)
+- [x] useReports composable
+- [x] Reports list page with filters
+- [x] Create report page (type, client, date range)
+- [x] Report editor page (add/remove widgets)
+- [x] Basic widget components (Metric, Chart, Table, Text)
+- [x] WidgetRenderer component
+- [ ] Full drag & drop reordering
+- [ ] Widget configuration panel
+- [ ] Report preview mode
 - [ ] Report scheduling
 - [ ] Email delivery
+
+**Files:**
+- `apps/web/server/api/reports/*` - CRUD endpoints
+- `apps/web/composables/useReports.ts` - State management
+- `apps/web/pages/[tenant]/reports/*` - Report pages
+- `apps/web/components/reports/widgets/*` - Widget components
 
 ---
 
@@ -243,10 +260,19 @@ FACEBOOK_APP_SECRET=<from Meta Developer Portal>
 - Disconnect functionality
 - Encrypted token storage
 
-### Session 6: Report Builder (Next)
-- [ ] Report template model
-- [ ] Widget system
-- [ ] Report builder UI
+### Session 6: Report Builder ✅
+- Report CRUD API (index.get, index.post, [id].get, [id].put, [id].delete)
+- useReports composable with full state management
+- Reports list page with type/status filters
+- Create report page (type selection, client selection, date range presets)
+- Report editor page with widget management
+- Widget components (Metric, Chart, Table, Text)
+- WidgetRenderer component for dynamic rendering
+
+### Session 7: Dashboards & PDF (Next)
+- [ ] Public dashboard view
+- [ ] Shareable link generation
+- [ ] PDF generation with Puppeteer
 
 ---
 
