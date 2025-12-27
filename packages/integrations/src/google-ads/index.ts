@@ -30,13 +30,11 @@ export class GoogleAdsConnector implements DataConnector {
 
   private clientId: string
   private clientSecret: string
-  private developerToken: string
   private client: GoogleAdsApi
 
   constructor(clientId: string, clientSecret: string, developerToken: string) {
     this.clientId = clientId
     this.clientSecret = clientSecret
-    this.developerToken = developerToken
 
     this.client = new GoogleAdsApi({
       client_id: clientId,
@@ -117,11 +115,15 @@ export class GoogleAdsConnector implements DataConnector {
   async getAccounts(refreshToken: string): Promise<Account[]> {
     try {
       // List all accessible customer IDs
-      const customerIds = await this.client.listAccessibleCustomers(refreshToken)
+      const response = await this.client.listAccessibleCustomers(refreshToken)
+      const resourceNames = response?.resource_names || []
 
-      if (!customerIds || customerIds.length === 0) {
+      if (resourceNames.length === 0) {
         return []
       }
+
+      // Extract customer IDs from resource names (format: customers/123456)
+      const customerIds = resourceNames.map((name: string) => name.replace('customers/', ''))
 
       const accounts: Account[] = []
 
