@@ -334,6 +334,24 @@ const currentDate = computed(() => {
   })
 })
 
+// Widget categories for mobile-first layout
+const metricWidgets = computed(() => {
+  if (!dashboard.value?.widgets) return []
+  return dashboard.value.widgets.filter((w: any) =>
+    w.type === 'metric' || w.type === 'metric-card',
+  )
+})
+
+const chartWidgets = computed(() => {
+  if (!dashboard.value?.widgets) return []
+  return dashboard.value.widgets.filter((w: any) => w.type === 'line-chart')
+})
+
+const barChartWidgets = computed(() => {
+  if (!dashboard.value?.widgets) return []
+  return dashboard.value.widgets.filter((w: any) => w.type === 'bar-chart')
+})
+
 // Get widget data (real or fallback)
 function getWidgetData(widget: any) {
   // Try to get real data first
@@ -563,47 +581,50 @@ function normalizeChartData(data: Array<{ label: string, value: number }>) {
 
     <!-- Dashboard content -->
     <div v-else-if="dashboard">
-      <!-- Header minimalista -->
+      <!-- Header Mobile-First -->
       <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div class="flex items-center justify-between">
+        <div class="max-w-7xl mx-auto px-4 py-3 sm:py-4">
+          <div class="flex items-center justify-between gap-3">
             <!-- Branding y título -->
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-3 min-w-0 flex-1">
               <img
                 v-if="branding.logoUrl"
                 :src="branding.logoUrl"
                 :alt="branding.companyName"
-                class="h-10 object-contain"
+                class="h-8 sm:h-10 object-contain shrink-0"
               >
               <div
                 v-else
-                class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-lg shrink-0"
+                class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center text-white font-bold text-sm sm:text-lg shrink-0"
                 :style="{ backgroundColor: branding.primaryColor }"
               >
                 {{ branding.companyName.charAt(0) }}
               </div>
-              <div class="min-w-0">
-                <div class="flex items-center gap-2 text-sm text-gray-500">
-                  <span class="truncate">{{ branding.companyName }}</span>
-                  <span class="text-gray-300">/</span>
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5 text-xs sm:text-sm text-gray-500">
+                  <span class="truncate max-w-[100px] sm:max-w-none">{{ branding.companyName }}</span>
+                  <span class="text-gray-300">•</span>
                   <span class="truncate">{{ dashboard.clientName }}</span>
                 </div>
-                <h1 class="text-xl font-bold text-gray-900 truncate">
+                <h1 class="text-base sm:text-xl font-bold text-gray-900 truncate">
                   {{ dashboard.name }}
                 </h1>
               </div>
             </div>
-            <!-- Fecha y estado -->
-            <div class="hidden sm:flex items-center gap-4">
-              <div class="flex items-center gap-2 text-sm text-gray-500">
+            <!-- Estado (Mobile: solo indicador, Desktop: completo) -->
+            <div class="flex items-center gap-2 shrink-0">
+              <div
+                class="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium"
+                :class="metricsData?.hasData ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'"
+              >
                 <span
-                  class="w-2 h-2 rounded-full"
+                  class="w-1.5 h-1.5 rounded-full"
                   :class="metricsData?.hasData ? 'bg-green-500' : 'bg-yellow-500'"
                 />
-                <span>{{ metricsData?.hasData ? 'En vivo' : 'Sin datos' }}</span>
+                <span class="hidden sm:inline">{{ metricsData?.hasData ? 'En vivo' : 'Sin datos' }}</span>
               </div>
-              <div class="h-4 w-px bg-gray-200" />
-              <div class="flex items-center gap-2 text-sm text-gray-500">
+              <div class="hidden sm:flex items-center gap-2 text-sm text-gray-500">
+                <div class="h-4 w-px bg-gray-200" />
                 <Icon name="heroicons:calendar" class="w-4 h-4" />
                 <span class="capitalize">{{ currentDate }}</span>
               </div>
@@ -656,177 +677,170 @@ function normalizeChartData(data: Array<{ label: string, value: number }>) {
           </p>
         </div>
 
-        <!-- Widget grid -->
-        <div
-          v-else
-          class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+        <!-- Mobile Metric Cards (Horizontal Scroll) -->
+        <section
+          v-if="metricWidgets.length > 0"
+          class="mb-6"
         >
+          <div class="flex items-center justify-between px-1 mb-3">
+            <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">
+              Métricas Clave
+            </h2>
+            <span class="text-xs text-gray-400">
+              Desliza →
+            </span>
+          </div>
+
+          <!-- Swipeable container -->
           <div
-            v-for="(widget, index) in dashboard.widgets"
+            class="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide -mx-4 px-4"
+            style="scroll-padding: 1rem;"
+          >
+            <MobileMetricCardSwipeable
+              v-for="(widget, index) in metricWidgets"
+              :key="widget.id"
+              :id="widget.id"
+              :title="widget.title"
+              :value="getWidgetData(widget)?.value || 0"
+              :previous-value="getWidgetData(widget)?.previousValue"
+              :format="widget.config?.format || widget.format"
+              :color-class="getWidgetColorClass(index)"
+              :icon="getWidgetIcon(widget.type)"
+              :has-real-data="hasRealData(widget)"
+              :insight="getWidgetInsight(widget.id)"
+              :loading="isAnalyzingRCA && widgetHasSignificantChange(widget) && !getWidgetInsight(widget.id)"
+            />
+          </div>
+        </section>
+
+        <!-- Charts Section -->
+        <section
+          v-if="chartWidgets.length > 0"
+          class="mb-6 space-y-4"
+        >
+          <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-wide px-1">
+            Tendencias
+          </h2>
+
+          <div
+            v-for="widget in chartWidgets"
             :key="widget.id"
-            :class="[
-              'bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all hover:shadow-md',
-              widget.size === 'large' ? 'md:col-span-2' : '',
-            ]"
+            class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
           >
             <!-- Widget header -->
-            <div class="px-6 py-4 border-b border-gray-100">
+            <div class="px-4 py-3 border-b border-gray-100">
               <div class="flex items-center gap-3">
-                <div
-                  class="w-9 h-9 rounded-lg bg-gradient-to-br flex items-center justify-center shrink-0"
-                  :class="getWidgetColorClass(index)"
-                >
-                  <Icon
-                    :name="getWidgetIcon(widget.type)"
-                    class="w-4 h-4 text-white"
-                  />
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shrink-0">
+                  <Icon name="heroicons:chart-bar" class="w-4 h-4 text-white" />
                 </div>
-                <h3 class="font-medium text-gray-900 truncate">
+                <h3 class="font-medium text-gray-900 truncate text-sm">
                   {{ widget.title }}
                 </h3>
               </div>
             </div>
 
-            <!-- Widget content -->
-            <div class="p-6">
-              <!-- Metric widget -->
-              <template v-if="widget.type === 'metric' || widget.type === 'metric-card'">
-                <div class="text-center py-4">
-                  <p class="text-4xl font-bold text-gray-900">
-                    {{ formatNumber(getWidgetData(widget)?.value || 0, widget.config?.format || widget.format) }}
-                  </p>
-                  <div
-                    v-if="hasRealData(widget)"
-                    class="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm font-medium"
-                    :class="calculateChange(getWidgetData(widget)?.value || 0, getWidgetData(widget)?.previousValue || 0) >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
-                  >
-                    <Icon
-                      :name="calculateChange(getWidgetData(widget)?.value || 0, getWidgetData(widget)?.previousValue || 0) >= 0 ? 'heroicons:arrow-trending-up' : 'heroicons:arrow-trending-down'"
-                      class="w-4 h-4"
-                    />
-                    {{ Math.abs(calculateChange(getWidgetData(widget)?.value || 0, getWidgetData(widget)?.previousValue || 0)) }}% vs período anterior
-                  </div>
-                  <p
-                    v-else
-                    class="mt-2 text-sm text-gray-400"
-                  >
-                    Sin datos de integración
-                  </p>
-                </div>
-
-                <!-- AI Insight for significant changes -->
-                <AiWidgetInsight
-                  v-if="widgetHasSignificantChange(widget) || getWidgetInsight(widget.id)"
-                  :summary="getWidgetInsight(widget.id)?.summary"
-                  :causes="getWidgetInsight(widget.id)?.causes"
-                  :loading="isAnalyzingRCA && !getWidgetInsight(widget.id)"
-                />
-              </template>
-
-              <!-- Line chart widget -->
-              <template v-else-if="widget.type === 'line-chart'">
-                <!-- With forecast -->
-                <AiForecastChart
-                  v-if="getWidgetForecast(widget.id)"
-                  :title="'Proyección: ' + widget.title"
-                  :data="getWidgetForecast(widget.id)"
-                  :loading="isGeneratingForecasts"
-                  :height="180"
-                />
-                <!-- Without forecast (basic chart) -->
-                <template v-else>
-                  <div
-                    v-if="getWidgetData(widget)?.data?.length > 0"
-                    class="h-40 flex items-end justify-between gap-2 px-2"
-                  >
-                    <div
-                      v-for="(item, i) in normalizeChartData(getWidgetData(widget)?.data || [])"
-                      :key="i"
-                      class="flex-1 flex flex-col items-center gap-2"
-                    >
-                      <div
-                        class="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t-lg transition-all hover:from-blue-600 hover:to-blue-500"
-                        :style="{ height: `${item.height}%` }"
-                      />
-                      <span class="text-xs text-gray-500">{{ item.label }}</span>
-                    </div>
-                  </div>
-                  <div
-                    v-else
-                    class="h-40 flex items-center justify-center"
-                  >
-                    <p class="text-sm text-gray-400">Sin datos disponibles</p>
-                  </div>
-                </template>
-              </template>
-
-              <!-- Bar chart widget -->
-              <template v-else-if="widget.type === 'bar-chart'">
+            <!-- Chart content -->
+            <div class="p-4">
+              <!-- With forecast -->
+              <AiForecastChart
+                v-if="getWidgetForecast(widget.id)"
+                :title="'Proyección: ' + widget.title"
+                :data="getWidgetForecast(widget.id)"
+                :loading="isGeneratingForecasts"
+                :height="200"
+              />
+              <!-- Without forecast (basic chart) -->
+              <template v-else>
                 <div
                   v-if="getWidgetData(widget)?.data?.length > 0"
-                  class="space-y-3"
+                  class="h-48 flex items-end justify-between gap-1"
                 >
                   <div
-                    v-for="(item, i) in getWidgetData(widget)?.data || []"
+                    v-for="(item, i) in normalizeChartData(getWidgetData(widget)?.data || [])"
                     :key="i"
-                    class="flex items-center gap-3"
+                    class="flex-1 flex flex-col items-center gap-1"
                   >
-                    <span class="text-sm text-gray-600 w-24 truncate">{{ item.label }}</span>
-                    <div class="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        class="h-full bg-gradient-to-r from-violet-500 to-violet-400 rounded-full transition-all"
-                        :style="{ width: `${Math.min((item.value / Math.max(...(getWidgetData(widget)?.data || []).map((d: any) => d.value), 1)) * 100, 100)}%` }"
-                      />
-                    </div>
-                    <span class="text-sm font-medium text-gray-900 w-16 text-right">{{ formatNumber(item.value) }}</span>
+                    <div
+                      class="w-full bg-gradient-to-t from-blue-500 to-blue-400 rounded-t transition-all"
+                      :style="{ height: `${item.height}%` }"
+                    />
+                    <span class="text-[10px] text-gray-400 truncate w-full text-center">{{ item.label }}</span>
                   </div>
                 </div>
                 <div
                   v-else
-                  class="h-32 flex items-center justify-center"
+                  class="h-48 flex items-center justify-center"
                 >
                   <p class="text-sm text-gray-400">Sin datos disponibles</p>
                 </div>
               </template>
-
-              <!-- Default/other widgets -->
-              <template v-else>
-                <div class="h-32 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl flex items-center justify-center">
-                  <div class="text-center">
-                    <Icon
-                      :name="getWidgetIcon(widget.type)"
-                      class="mx-auto h-8 w-8 text-gray-400"
-                    />
-                    <p class="mt-2 text-sm text-gray-500 capitalize">
-                      {{ widget.type.replace('-', ' ') }}
-                    </p>
-                  </div>
-                </div>
-              </template>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- Recommendations & Alerts -->
+        <!-- Bar Charts Section -->
         <section
-          v-if="narratives?.recommendations || narratives?.alerts?.length"
-          class="mt-8 space-y-4"
+          v-if="barChartWidgets.length > 0"
+          class="mb-6 space-y-4"
         >
-          <!-- Alerts -->
-          <AiNarrativeCard
-            v-for="(alert, index) in narratives?.alerts || []"
-            :key="`alert-${index}`"
-            type="alert"
-            :content="alert.narrative"
-            severity="medium"
-            compact
-          />
+          <div
+            v-for="widget in barChartWidgets"
+            :key="widget.id"
+            class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+          >
+            <div class="px-4 py-3 border-b border-gray-100">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shrink-0">
+                  <Icon name="heroicons:chart-bar-square" class="w-4 h-4 text-white" />
+                </div>
+                <h3 class="font-medium text-gray-900 truncate text-sm">
+                  {{ widget.title }}
+                </h3>
+              </div>
+            </div>
+            <div class="p-4">
+              <div
+                v-if="getWidgetData(widget)?.data?.length > 0"
+                class="space-y-3"
+              >
+                <div
+                  v-for="(item, i) in getWidgetData(widget)?.data || []"
+                  :key="i"
+                  class="flex items-center gap-3"
+                >
+                  <span class="text-sm text-gray-600 w-20 truncate">{{ item.label }}</span>
+                  <div class="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      class="h-full bg-gradient-to-r from-violet-500 to-violet-400 rounded-full"
+                      :style="{ width: `${Math.min((item.value / Math.max(...(getWidgetData(widget)?.data || []).map((d: any) => d.value), 1)) * 100, 100)}%` }"
+                    />
+                  </div>
+                  <span class="text-sm font-medium text-gray-900 w-14 text-right">{{ formatNumber(item.value) }}</span>
+                </div>
+              </div>
+              <div
+                v-else
+                class="h-24 flex items-center justify-center"
+              >
+                <p class="text-sm text-gray-400">Sin datos disponibles</p>
+              </div>
+            </div>
+          </div>
+        </section>
 
-          <!-- Recommendation -->
-          <AiNarrativeCard
-            v-if="narratives?.recommendations"
-            type="recommendation"
-            :content="narratives.recommendations.narrative"
+        <!-- Alerts Section -->
+        <section class="mb-6 px-1">
+          <DashboardAlertsList
+            :alerts="(narratives?.alerts || []).map(a => ({ narrative: a.narrative, severity: 'medium' as const }))"
+            :loading="isGeneratingNarratives"
+          />
+        </section>
+
+        <!-- Recommendations Section -->
+        <section class="mb-6">
+          <DashboardRecommendationsCard
+            :recommendations="narratives?.recommendations || null"
+            :loading="isGeneratingNarratives && !narratives?.recommendations"
           />
         </section>
       </main>
@@ -843,3 +857,15 @@ function normalizeChartData(data: Array<{ label: string, value: number }>) {
     </div>
   </div>
 </template>
+
+<style scoped>
+/* Hide scrollbar for horizontal scroll on mobile */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+</style>
