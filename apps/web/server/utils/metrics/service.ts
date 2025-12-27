@@ -1,4 +1,11 @@
-import type { DateRange, NormalizedMetrics, OAuthTokens } from '@tamarindo/types'
+import type {
+  DateRange,
+  NormalizedMetrics,
+  OAuthTokens,
+  CanonicalMetric,
+  MetricSource,
+} from '@tamarindo/types'
+import { CORE_METRIC_NAMES, CONVERSION_METRIC_NAMES } from '@tamarindo/types'
 import { prisma, decrypt, encrypt } from '@tamarindo/db'
 import { createGoogleAdsConnector } from '@tamarindo/integrations/google-ads'
 import { createFacebookAdsConnector } from '@tamarindo/integrations/facebook-ads'
@@ -6,6 +13,8 @@ import {
   createMockGoogleAdsConnector,
   createMockFacebookAdsConnector,
   generateMockMetrics,
+  getAdapter,
+  hasAdapter,
 } from '@tamarindo/integrations'
 
 // Environment variables
@@ -36,6 +45,83 @@ export interface WidgetData {
   data?: Array<{ label: string, value: number }>
   columns?: Array<{ key: string, label: string, format?: string }>
   rows?: Array<Record<string, any>>
+}
+
+/**
+ * Convert legacy NormalizedMetrics to CanonicalMetric[]
+ * Maps field names: cost → spend, etc.
+ */
+function toCanonicalMetrics(
+  normalized: NormalizedMetrics,
+  currency: string = 'USD',
+): CanonicalMetric[] {
+  // Map source name to canonical format
+  const sourceMap: Record<string, MetricSource> = {
+    'google-ads': 'google_ads',
+    'facebook-ads': 'facebook_ads',
+    'google_ads': 'google_ads',
+    'facebook_ads': 'facebook_ads',
+  }
+
+  const source = sourceMap[normalized.source] || 'google_ads'
+
+  return normalized.data.map((point) => {
+    const m = point.metrics
+
+    // Create canonical metric with proper field mapping
+    const canonical: CanonicalMetric = {
+      source,
+      accountId: normalized.accountId,
+      date: point.date,
+      currency,
+
+      // Core metrics (map 'cost' to 'spend')
+      impressions: m.impressions || 0,
+      clicks: m.clicks || 0,
+      spend: m.cost || m.spend || 0,
+
+      // Derived metrics
+      ctr: m.ctr || ((m.impressions ?? 0) > 0 ? ((m.clicks ?? 0) / (m.impressions ?? 1)) * 100 : 0),
+      cpc: m.cpc || ((m.clicks ?? 0) > 0 ? (m.cost || m.spend || 0) / (m.clicks ?? 1) : 0),
+      cpm: m.cpm || ((m.impressions ?? 0) > 0 ? ((m.cost || m.spend || 0) / (m.impressions ?? 1)) * 1000 : 0),
+    }
+
+    // Optional conversion metrics
+    if (m.conversions !== undefined && m.conversions > 0) {
+      canonical.conversions = m.conversions
+    }
+    if (m.conversionValue !== undefined && m.conversionValue > 0) {
+      canonical.conversionValue = m.conversionValue
+    }
+    if (m.conversionRate !== undefined) {
+      canonical.conversionRate = m.conversionRate
+    }
+    else if (canonical.conversions && canonical.clicks > 0) {
+      canonical.conversionRate = (canonical.conversions / canonical.clicks) * 100
+    }
+    if (m.costPerConversion !== undefined) {
+      canonical.costPerConversion = m.costPerConversion
+    }
+    else if (canonical.conversions && canonical.conversions > 0) {
+      canonical.costPerConversion = canonical.spend / canonical.conversions
+    }
+    if (canonical.conversionValue && canonical.spend > 0) {
+      canonical.roas = canonical.conversionValue / canonical.spend
+    }
+
+    // Platform-specific metrics
+    if (m.reach !== undefined) {
+      canonical.reach = m.reach
+    }
+    if (m.frequency !== undefined) {
+      canonical.frequency = m.frequency
+    }
+    if (m.videoViews !== undefined) {
+      canonical.videoViews = m.videoViews
+    }
+
+    return canonical
+  })
 }
 
 /**
@@ -169,29 +255,33 @@ export async function syncMetrics(
   const connector = getConnector(dataSource.type)
   const token = validCredentials.refreshToken || validCredentials.accessToken
 
-  const metrics = await connector.getMetrics(
+  const rawMetrics = await connector.getMetrics(
     token,
     platformAccount.platformId,
     dateRange,
     ['impressions', 'clicks', 'cost', 'conversions'],
   )
 
-  // Save metrics to cache (upsert by date)
-  for (const dataPoint of metrics.data) {
+  // Convert to canonical format
+  const currency = platformAccount.currency || 'USD'
+  const canonicalMetrics = toCanonicalMetrics(rawMetrics, currency)
+
+  // Save canonical metrics to cache (upsert by date)
+  for (const metric of canonicalMetrics) {
     await prisma.metric.upsert({
       where: {
         platformAccountId_date: {
           platformAccountId,
-          date: new Date(dataPoint.date),
+          date: new Date(metric.date),
         },
       },
       create: {
         platformAccountId,
-        date: new Date(dataPoint.date),
-        data: dataPoint.metrics,
+        date: new Date(metric.date),
+        data: JSON.parse(JSON.stringify(metric)),
       },
       update: {
-        data: dataPoint.metrics,
+        data: JSON.parse(JSON.stringify(metric)),
       },
     })
   }
@@ -202,7 +292,7 @@ export async function syncMetrics(
     data: { lastSyncAt: new Date(), syncError: null },
   })
 
-  return metrics
+  return rawMetrics
 }
 
 /**
@@ -245,7 +335,7 @@ function generateDemoMetricsForClient(
   for (const dataPoint of googleMetrics.data) {
     for (const [key, value] of Object.entries(dataPoint.metrics)) {
       totals[key] = (totals[key] || 0) + value
-      bySource.google_ads[key] = (bySource.google_ads[key] || 0) + value
+      bySource.google_ads![key] = (bySource.google_ads![key] || 0) + value
 
       const dateMetrics = byDate.get(dataPoint.date) || {}
       dateMetrics[key] = (dateMetrics[key] || 0) + value
@@ -257,7 +347,7 @@ function generateDemoMetricsForClient(
   for (const dataPoint of facebookMetrics.data) {
     for (const [key, value] of Object.entries(dataPoint.metrics)) {
       totals[key] = (totals[key] || 0) + value
-      bySource.facebook_ads[key] = (bySource.facebook_ads[key] || 0) + value
+      bySource.facebook_ads![key] = (bySource.facebook_ads![key] || 0) + value
 
       const dateMetrics = byDate.get(dataPoint.date) || {}
       dateMetrics[key] = (dateMetrics[key] || 0) + value
@@ -271,8 +361,8 @@ function generateDemoMetricsForClient(
   const previousEnd = new Date(new Date(dateRange.start).getTime() - 1)
 
   const previousGoogleMetrics = generateMockMetrics('google-ads', 'demo-google', {
-    start: previousStart.toISOString().split('T')[0],
-    end: previousEnd.toISOString().split('T')[0],
+    start: previousStart.toISOString().split('T')[0] ?? '',
+    end: previousEnd.toISOString().split('T')[0] ?? '',
   }, { profile: 'ecommerce', trend: 'stable' })
 
   for (const dataPoint of previousGoogleMetrics.data) {
@@ -483,13 +573,15 @@ export function transformToWidgetData(
           { key: 'date', label: 'Fecha', format: 'text' },
           { key: 'impressions', label: 'Impresiones', format: 'number' },
           { key: 'clicks', label: 'Clicks', format: 'number' },
-          { key: 'cost', label: 'Costo', format: 'currency' },
+          { key: 'spend', label: 'Gasto', format: 'currency' },
           { key: 'conversions', label: 'Conversiones', format: 'number' },
           { key: 'ctr', label: 'CTR', format: 'percent' },
         ],
         rows: metrics.byDate.map(d => ({
           date: formatDateLabel(d.date),
           ...d.metrics,
+          // Ensure spend is available (may come as 'cost' from legacy data)
+          spend: d.metrics.spend ?? d.metrics.cost ?? 0,
         })),
       }
 
@@ -501,7 +593,7 @@ export function transformToWidgetData(
 function formatDateLabel(dateStr: string): string {
   const date = new Date(dateStr)
   const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
-  return days[date.getUTCDay()]
+  return days[date.getUTCDay()] ?? dateStr
 }
 
 function formatSourceLabel(source: string): string {

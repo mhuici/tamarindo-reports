@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref, computed } from 'vue'
+
 type AlertSeverity = 'low' | 'medium' | 'high' | 'critical'
 
 interface Alert {

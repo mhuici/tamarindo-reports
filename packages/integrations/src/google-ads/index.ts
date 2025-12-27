@@ -147,7 +147,7 @@ export class GoogleAdsConnector implements DataConnector {
           `)
 
           if (results && results.length > 0) {
-            const customerData = results[0].customer
+            const customerData = results[0]?.customer
             accounts.push({
               id: customerData?.id?.toString() || customerId,
               name: customerData?.descriptive_name || `Account ${customerId}`,
@@ -222,21 +222,29 @@ export class GoogleAdsConnector implements DataConnector {
       }
 
       // Convert to normalized format and calculate derived metrics
-      const data: MetricDataPoint[] = Array.from(byDate.entries()).map(([date, m]) => ({
-        date,
-        metrics: {
-          impressions: Math.round(m.impressions),
-          clicks: Math.round(m.clicks),
-          cost: Math.round(m.cost * 100) / 100, // Round to 2 decimals
-          conversions: Math.round(m.conversions * 100) / 100,
-          conversionValue: Math.round(m.conversionValue * 100) / 100,
-          // Calculated metrics
-          ctr: m.impressions > 0 ? Math.round((m.clicks / m.impressions) * 10000) / 100 : 0,
-          cpc: m.clicks > 0 ? Math.round((m.cost / m.clicks) * 100) / 100 : 0,
-          conversionRate: m.clicks > 0 ? Math.round((m.conversions / m.clicks) * 10000) / 100 : 0,
-          costPerConversion: m.conversions > 0 ? Math.round((m.cost / m.conversions) * 100) / 100 : 0,
-        },
-      }))
+      const data: MetricDataPoint[] = Array.from(byDate.entries()).map(([date, m]) => {
+        const impressions = m.impressions ?? 0
+        const clicks = m.clicks ?? 0
+        const cost = m.cost ?? 0
+        const conversions = m.conversions ?? 0
+        const conversionValue = m.conversionValue ?? 0
+
+        return {
+          date,
+          metrics: {
+            impressions: Math.round(impressions),
+            clicks: Math.round(clicks),
+            cost: Math.round(cost * 100) / 100, // Round to 2 decimals
+            conversions: Math.round(conversions * 100) / 100,
+            conversionValue: Math.round(conversionValue * 100) / 100,
+            // Calculated metrics
+            ctr: impressions > 0 ? Math.round((clicks / impressions) * 10000) / 100 : 0,
+            cpc: clicks > 0 ? Math.round((cost / clicks) * 100) / 100 : 0,
+            conversionRate: clicks > 0 ? Math.round((conversions / clicks) * 10000) / 100 : 0,
+            costPerConversion: conversions > 0 ? Math.round((cost / conversions) * 100) / 100 : 0,
+          },
+        }
+      })
 
       return {
         source: 'google-ads',

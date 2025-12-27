@@ -105,8 +105,8 @@ export default defineEventHandler(async (event) => {
       data: {
         name: fbUserInfo.name || fbUserInfo.email || 'Facebook Ads',
         credentials: encryptedCredentials,
-        lastSync: null,
-        status: 'ACTIVE',
+        lastSyncAt: null,
+        isActive: true,
       },
     })
   }
@@ -118,7 +118,7 @@ export default defineEventHandler(async (event) => {
         type: 'FACEBOOK_ADS',
         tenantId: stateData.tenantId,
         credentials: encryptedCredentials,
-        status: 'ACTIVE',
+        isActive: true,
       },
     })
   }

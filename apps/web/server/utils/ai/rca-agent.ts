@@ -244,11 +244,12 @@ function generateMockRCA(
   }
 
   const metricKey = metricName.toLowerCase()
-  const causes = mockCauses[metricKey] || mockCauses.default
+  const causes = mockCauses[metricKey] ?? mockCauses.default!
+  const firstCause = causes[0]!
 
   const summaryTemplates = {
-    up: `${metricLabel} subió ${absPercent}% esta semana. Esto se debe principalmente a ${causes[0].factor.toLowerCase()}. Recomendamos ${causes[0].action?.toLowerCase().replace(/\.$/, '') || 'revisar la configuración de la campaña'}.`,
-    down: `${metricLabel} bajó ${absPercent}% esta semana. La causa principal parece ser ${causes[0].factor.toLowerCase()}. Sugerimos ${causes[0].action?.toLowerCase().replace(/\.$/, '') || 'monitorear la evolución durante los próximos días'}.`,
+    up: `${metricLabel} subió ${absPercent}% esta semana. Esto se debe principalmente a ${firstCause.factor.toLowerCase()}. Recomendamos ${firstCause.action?.toLowerCase().replace(/\.$/, '') || 'revisar la configuración de la campaña'}.`,
+    down: `${metricLabel} bajó ${absPercent}% esta semana. La causa principal parece ser ${firstCause.factor.toLowerCase()}. Sugerimos ${firstCause.action?.toLowerCase().replace(/\.$/, '') || 'monitorear la evolución durante los próximos días'}.`,
   }
 
   return {
@@ -268,7 +269,7 @@ function generateMockRCA(
  * Batch analyze multiple metrics
  */
 export async function analyzeMultipleMetrics(
-  metrics: Array<Omit<RCAInput, 'correlatedMetrics'>>,
+  metrics: Array<Omit<RCAInput, 'correlatedMetrics' | 'context'>>,
   context: RCAInput['context'],
 ): Promise<RCAResult[]> {
   // Calculate all changes first to use as correlated metrics

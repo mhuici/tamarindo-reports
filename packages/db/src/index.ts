@@ -1,5 +1,5 @@
 // Re-export Prisma client
-export { prisma, default } from './client'
+export { prisma } from './client'
 
 // Re-export Prisma types
 export type {

@@ -188,15 +188,18 @@ export class FacebookAdsConnector implements DataConnector {
         }
 
         // Calculate derived metrics
-        if (metricsData.clicks > 0) {
-          metricsData.conversionRate = Math.round((conversions / metricsData.clicks) * 10000) / 100
+        const clicks = metricsData.clicks ?? 0
+        const cost = metricsData.cost ?? 0
+
+        if (clicks > 0) {
+          metricsData.conversionRate = Math.round((conversions / clicks) * 10000) / 100
         }
         else {
           metricsData.conversionRate = 0
         }
 
         if (conversions > 0) {
-          metricsData.costPerConversion = Math.round((metricsData.cost / conversions) * 100) / 100
+          metricsData.costPerConversion = Math.round((cost / conversions) * 100) / 100
         }
         else {
           metricsData.costPerConversion = 0

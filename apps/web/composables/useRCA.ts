@@ -3,6 +3,8 @@
  * Analyzes significant metric changes and provides insights
  */
 
+import { useState } from '#imports'
+
 interface RCACause {
   factor: string
   explanation: string

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref, computed } from 'vue'
+
 interface RCACause {
   factor: string
   explanation: string

@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
     select: { passwordHash: true },
   })
 
-  if (!user) {
+  if (!user || !user.passwordHash) {
     throw createError({
       statusCode: 404,
       message: 'User not found',

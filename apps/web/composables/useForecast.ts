@@ -2,7 +2,8 @@
  * Composable for metric forecasting
  */
 
-import { forecast as hwForecast, generateDates, type ForecastResult, type ForecastOptions } from '~/utils/forecasting/holt-winters'
+import { useState } from '#imports'
+import { forecast as hwForecast, generateDates, type ForecastResult, type ForecastOptions } from '../utils/forecasting/holt-winters'
 
 interface ForecastInput {
   data: number[]

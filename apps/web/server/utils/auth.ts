@@ -84,7 +84,7 @@ export function requireRole(event: H3Event, requiredRole: 'OWNER' | 'ADMIN' | 'M
     OWNER: 3,
   }
 
-  if (roleHierarchy[user.role] < roleHierarchy[requiredRole]) {
+  if ((roleHierarchy[user.role] ?? 0) < (roleHierarchy[requiredRole] ?? 0)) {
     throw createError({
       statusCode: 403,
       statusMessage: 'Forbidden',

@@ -59,7 +59,7 @@ function generateDailyMetrics(
 ): Record<string, number> {
   const baseMetrics = CAMPAIGN_PROFILES[profile]
   const dayOfWeek = date.getDay()
-  const dayMultiplier = DAY_MULTIPLIERS[dayOfWeek === 0 ? 6 : dayOfWeek - 1]
+  const dayMultiplier = DAY_MULTIPLIERS[dayOfWeek === 0 ? 6 : dayOfWeek - 1] ?? 1
   const trendMultiplier = TREND_PATTERNS[trend](dayIndex, totalDays)
 
   const impressions = Math.round(
@@ -141,7 +141,7 @@ export function generateMockMetrics(
     currentDate.setDate(currentDate.getDate() + i)
 
     data.push({
-      date: currentDate.toISOString().split('T')[0],
+      date: currentDate.toISOString().split('T')[0] ?? '',
       metrics: generateDailyMetrics(profile, currentDate, i, totalDays, trend),
     })
   }

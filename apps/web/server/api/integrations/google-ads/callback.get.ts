@@ -110,8 +110,8 @@ export default defineEventHandler(async (event) => {
       where: { id: existingDataSource.id },
       data: {
         credentials: encryptedCredentials,
-        lastSync: null,
-        status: 'ACTIVE',
+        lastSyncAt: null,
+        isActive: true,
       },
     })
   }
@@ -123,7 +123,7 @@ export default defineEventHandler(async (event) => {
         type: 'GOOGLE_ADS',
         tenantId: stateData.tenantId,
         credentials: encryptedCredentials,
-        status: 'ACTIVE',
+        isActive: true,
       },
     })
   }

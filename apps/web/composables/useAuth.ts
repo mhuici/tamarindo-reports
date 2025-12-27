@@ -1,3 +1,5 @@
+import { computed, readonly } from 'vue'
+import { useState, navigateTo } from '#imports'
 import type { AuthUser } from '@tamarindo/types'
 
 interface LoginCredentials {
@@ -124,7 +126,9 @@ export function useAuth() {
       OWNER: 3,
     }
 
-    return roleHierarchy[user.value.role] >= roleHierarchy[requiredRole]
+    const userRoleLevel = roleHierarchy[user.value.role] ?? 0
+    const requiredRoleLevel = roleHierarchy[requiredRole] ?? 0
+    return userRoleLevel >= requiredRoleLevel
   }
 
   return {

@@ -68,13 +68,14 @@ export function forecast(
   const smoothed = applyHoltWinters(data, level, trend, seasonal, alpha, beta, gamma, seasonality)
 
   // Generate predictions
+  const lastDate = dates[dates.length - 1] ?? new Date().toISOString().split('T')[0]!
   const predictions = generatePredictions(
     smoothed.level,
     smoothed.trend,
     smoothed.seasonal,
     periods,
     seasonality,
-    dates[dates.length - 1],
+    lastDate,
   )
 
   // Calculate confidence intervals
@@ -82,12 +83,14 @@ export function forecast(
   const confidence = calculateConfidenceIntervals(predictions.map(p => p.value), residuals)
 
   // Determine trend direction
-  const trendPercent = calculateTrendPercent(data[data.length - 1], predictions[predictions.length - 1].value)
+  const lastDataValue = data[data.length - 1] ?? 0
+  const lastPredictionValue = predictions[predictions.length - 1]?.value ?? 0
+  const trendPercent = calculateTrendPercent(lastDataValue, lastPredictionValue)
   const trendDirection = determineTrend(trendPercent)
 
   // Build historical points
   const historical: ForecastPoint[] = data.map((value, i) => ({
-    date: dates[i],
+    date: dates[i] ?? '',
     value,
     isHistorical: true,
   }))
@@ -112,7 +115,7 @@ function initializeComponents(data: number[], seasonality: number) {
   // Initial trend: average difference between seasons
   let trendSum = 0
   for (let i = 0; i < seasonality; i++) {
-    trendSum += (data[seasonality + i] - data[i]) / seasonality
+    trendSum += ((data[seasonality + i] ?? 0) - (data[i] ?? 0)) / seasonality
   }
   const trend = trendSum / seasonality
 
@@ -121,7 +124,7 @@ function initializeComponents(data: number[], seasonality: number) {
   for (let i = 0; i < seasonality; i++) {
     const seasonAvg = data.slice(i, data.length).filter((_, idx) => idx % seasonality === 0)
     const avg = seasonAvg.reduce((a, b) => a + b, 0) / seasonAvg.length
-    seasonal.push(data[i] / (level || 1))
+    seasonal.push((data[i] ?? 0) / (level || 1))
   }
 
   // Normalize seasonal factors
@@ -152,26 +155,31 @@ function applyHoltWinters(
 
   for (let t = 0; t < n; t++) {
     const seasonIdx = t % seasonality
+    const seasonalVal = seasonal[seasonIdx] ?? 1
 
     if (t === 0) {
-      fitted.push(level[0] * seasonal[seasonIdx])
+      fitted.push((level[0] ?? initialLevel) * seasonalVal)
       continue
     }
 
+    const prevLevel = level[t - 1] ?? initialLevel
+    const prevTrend = trend[t - 1] ?? initialTrend
+    const dataVal = data[t] ?? 0
+
     // Update level
-    const newLevel = alpha * (data[t] / seasonal[seasonIdx]) + (1 - alpha) * (level[t - 1] + trend[t - 1])
+    const newLevel = alpha * (dataVal / seasonalVal) + (1 - alpha) * (prevLevel + prevTrend)
     level.push(newLevel)
 
     // Update trend
-    const newTrend = beta * (newLevel - level[t - 1]) + (1 - beta) * trend[t - 1]
+    const newTrend = beta * (newLevel - prevLevel) + (1 - beta) * prevTrend
     trend.push(newTrend)
 
     // Update seasonal
-    const newSeasonal = gamma * (data[t] / newLevel) + (1 - gamma) * seasonal[seasonIdx]
+    const newSeasonal = gamma * (dataVal / newLevel) + (1 - gamma) * seasonalVal
     seasonal[seasonIdx] = newSeasonal
 
     // Fitted value
-    fitted.push((level[t - 1] + trend[t - 1]) * seasonal[seasonIdx])
+    fitted.push((prevLevel + prevTrend) * seasonalVal)
   }
 
   return { level, trend, seasonal, fitted }
@@ -189,8 +197,8 @@ function generatePredictions(
   lastDate: string,
 ): ForecastPoint[] {
   const predictions: ForecastPoint[] = []
-  const lastLevel = levels[levels.length - 1]
-  const lastTrend = trends[trends.length - 1]
+  const lastLevel = levels[levels.length - 1] ?? 0
+  const lastTrend = trends[trends.length - 1] ?? 0
 
   // Try to parse the date, fallback to today if invalid
   let startDate = new Date(lastDate)
@@ -200,13 +208,14 @@ function generatePredictions(
 
   for (let h = 1; h <= periods; h++) {
     const seasonIdx = (levels.length - 1 + h) % seasonality
-    const value = (lastLevel + h * lastTrend) * seasonal[seasonIdx]
+    const seasonalVal = seasonal[seasonIdx] ?? 1
+    const value = (lastLevel + h * lastTrend) * seasonalVal
 
     const date = new Date(startDate)
     date.setDate(date.getDate() + h)
 
     predictions.push({
-      date: date.toISOString().split('T')[0],
+      date: date.toISOString().split('T')[0] ?? '',
       value: Math.max(0, value), // Ensure non-negative
       isHistorical: false,
     })
@@ -223,7 +232,7 @@ function calculateResiduals(actual: number[], fitted: number[]): number[] {
   const minLen = Math.min(actual.length, fitted.length)
 
   for (let i = 0; i < minLen; i++) {
-    residuals.push(actual[i] - fitted[i])
+    residuals.push((actual[i] ?? 0) - (fitted[i] ?? 0))
   }
 
   return residuals
@@ -312,9 +321,10 @@ function generateSimpleForecast(
   const n = data.length
 
   for (let i = 0; i < n; i++) {
+    const dataVal = data[i] ?? 0
     sumX += i
-    sumY += data[i]
-    sumXY += i * data[i]
+    sumY += dataVal
+    sumXY += i * dataVal
     sumX2 += i * i
   }
 
@@ -323,7 +333,8 @@ function generateSimpleForecast(
 
   // Generate predictions
   const predictions: ForecastPoint[] = []
-  let startDate = new Date(dates[dates.length - 1])
+  const lastDateStr = dates[dates.length - 1] ?? new Date().toISOString().split('T')[0]!
+  let startDate = new Date(lastDateStr)
   if (isNaN(startDate.getTime())) {
     startDate = new Date()
   }
@@ -334,7 +345,7 @@ function generateSimpleForecast(
     date.setDate(date.getDate() + h)
 
     predictions.push({
-      date: date.toISOString().split('T')[0],
+      date: date.toISOString().split('T')[0] ?? '',
       value: Math.max(0, value),
       isHistorical: false,
     })
@@ -349,11 +360,12 @@ function generateSimpleForecast(
     lower95: predictions.map(p => Math.max(0, p.value - 1.96 * stdDev)),
   }
 
-  const trendPercent = calculateTrendPercent(lastValue, predictions[periods - 1].value)
+  const lastPrediction = predictions[periods - 1]
+  const trendPercent = calculateTrendPercent(lastValue ?? 0, lastPrediction?.value ?? 0)
   const trend = determineTrend(trendPercent)
 
   const historical: ForecastPoint[] = data.map((value, i) => ({
-    date: dates[i],
+    date: dates[i] ?? '',
     value,
     isHistorical: true,
   }))
@@ -376,7 +388,7 @@ export function generateDates(count: number, endDate: Date = new Date()): string
   for (let i = count - 1; i >= 0; i--) {
     const date = new Date(endDate)
     date.setDate(date.getDate() - i)
-    dates.push(date.toISOString().split('T')[0])
+    dates.push(date.toISOString().split('T')[0] ?? '')
   }
   return dates
 }

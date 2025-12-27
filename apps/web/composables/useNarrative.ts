@@ -2,6 +2,8 @@
  * Composable for AI-powered narrative generation
  */
 
+import { useState } from '#imports'
+
 type NarrativeType = 'executive-summary' | 'widget-insight' | 'recommendation' | 'alert'
 type NarrativeTone = 'professional' | 'casual' | 'technical' | 'bold'
 type NarrativeLanguage = 'es' | 'en' | 'pt'

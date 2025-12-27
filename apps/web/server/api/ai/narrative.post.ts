@@ -7,7 +7,7 @@ import {
 } from '~/server/utils/ai/narrative-engine'
 import type { NarrativeTone, NarrativeLanguage } from '~/server/utils/ai/prompts/narrative'
 
-interface SingleNarrativeBody extends NarrativeRequest {
+type SingleNarrativeBody = NarrativeRequest & {
   mode?: 'single'
 }
 

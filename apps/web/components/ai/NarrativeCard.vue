@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 type NarrativeType = 'executive-summary' | 'widget-insight' | 'recommendation' | 'alert'
 type AlertSeverity = 'low' | 'medium' | 'high' | 'critical'
 

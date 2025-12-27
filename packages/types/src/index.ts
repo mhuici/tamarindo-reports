@@ -185,3 +185,10 @@ export interface AIInsight {
   recommendations: string[]
   sentiment: 'positive' | 'neutral' | 'negative'
 }
+
+// ============================================
+// Canonical Metrics (Session 14)
+// ============================================
+
+export * from './canonical-metrics'
+export * from './metric-definitions'
