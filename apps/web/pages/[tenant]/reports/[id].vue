@@ -21,6 +21,11 @@ const saveMessage = ref('')
 const isGeneratingInsights = ref(false)
 const insightsError = ref('')
 
+// PDF generation state
+const isGeneratingPDF = ref(false)
+const pdfError = ref('')
+const pdfSuccess = ref('')
+
 // Fetch report on mount
 onMounted(async () => {
   const report = await fetchReport(reportId.value)
@@ -146,6 +151,46 @@ async function generateAIInsights() {
   }
 }
 
+async function generatePDF() {
+  if (isGeneratingPDF.value) return
+
+  isGeneratingPDF.value = true
+  pdfError.value = ''
+  pdfSuccess.value = ''
+
+  try {
+    const response = await $fetch<{ success: boolean; pdfUrl: string; message: string }>('/api/pdf/generate', {
+      method: 'POST',
+      body: {
+        reportId: reportId.value,
+      },
+    })
+
+    if (response.success) {
+      pdfSuccess.value = 'PDF generado exitosamente'
+      // Refresh report to get updated PDF URL
+      await fetchReport(reportId.value)
+
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        pdfSuccess.value = ''
+      }, 3000)
+    }
+  }
+  catch (e: any) {
+    pdfError.value = e?.data?.message || 'Error al generar PDF'
+  }
+  finally {
+    isGeneratingPDF.value = false
+  }
+}
+
+function downloadPDF() {
+  if (currentReport.value?.pdfUrl) {
+    window.open(currentReport.value.pdfUrl, '_blank')
+  }
+}
+
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -235,6 +280,19 @@ function getWidgetIcon(type: string) {
           >
             {{ saveMessage }}
           </span>
+          <span
+            v-if="pdfSuccess"
+            class="text-sm text-green-600"
+          >
+            {{ pdfSuccess }}
+          </span>
+          <span
+            v-if="pdfError"
+            class="text-sm text-red-600"
+          >
+            {{ pdfError }}
+          </span>
+
           <button
             class="btn-secondary"
             :disabled="isSaving"
@@ -252,17 +310,36 @@ function getWidgetIcon(type: string) {
             />
             Save Draft
           </button>
+
+          <!-- PDF buttons -->
           <button
-            v-if="currentReport.status === 'DRAFT'"
-            class="btn-primary"
-            :disabled="isSaving || widgets.length === 0"
-            @click="generateReport"
+            v-if="currentReport.pdfUrl"
+            class="btn-secondary"
+            @click="downloadPDF"
           >
             <Icon
-              name="heroicons:sparkles"
+              name="heroicons:arrow-down-tray"
               class="w-4 h-4 mr-2"
             />
-            Generate Report
+            Descargar PDF
+          </button>
+
+          <button
+            class="btn-primary"
+            :disabled="isGeneratingPDF || widgets.length === 0"
+            @click="generatePDF"
+          >
+            <Icon
+              v-if="isGeneratingPDF"
+              name="heroicons:arrow-path"
+              class="w-4 h-4 mr-2 animate-spin"
+            />
+            <Icon
+              v-else
+              name="heroicons:document-arrow-down"
+              class="w-4 h-4 mr-2"
+            />
+            {{ currentReport.pdfUrl ? 'Regenerar PDF' : 'Generar PDF' }}
           </button>
         </div>
       </div>
@@ -294,17 +371,32 @@ function getWidgetIcon(type: string) {
               {{ formatDate(currentReport.createdAt) }}
             </p>
           </div>
-          <div v-if="currentReport.pdfUrl">
+          <div>
             <p class="text-xs text-gray-500 uppercase tracking-wide">
               PDF
             </p>
-            <a
-              :href="currentReport.pdfUrl"
-              target="_blank"
-              class="font-medium text-tamarindo-600 hover:underline"
+            <div
+              v-if="currentReport.pdfUrl"
+              class="flex items-center gap-2"
             >
-              Download
-            </a>
+              <Icon
+                name="heroicons:check-circle"
+                class="w-4 h-4 text-green-500"
+              />
+              <a
+                :href="currentReport.pdfUrl"
+                target="_blank"
+                class="font-medium text-tamarindo-600 hover:underline"
+              >
+                Ver PDF
+              </a>
+            </div>
+            <span
+              v-else
+              class="text-gray-400 text-sm"
+            >
+              No generado
+            </span>
           </div>
         </div>
       </div>
