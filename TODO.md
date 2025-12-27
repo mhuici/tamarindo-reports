@@ -18,7 +18,8 @@
 | 10 | Metrics Service & Real Data Integration | ✅ |
 | 11 | PDF Generation & UI | ✅ |
 | 12 | RCA, Forecasting, Narrative Engine (Claude AI) | ✅ |
-| 13 | Testing & Polish | 🔄 Pendiente |
+| 13 | Dashboard Mobile-First | ✅ |
+| 14 | Testing & Polish | 🔄 Pendiente |
 
 ---
 
@@ -152,6 +153,15 @@ PUPPETEER_ENABLED=true    # Habilitado por defecto
 - [x] Tipos: executive-summary, widget-insight, recommendation, alert
 - [x] Integración en dashboard (resumen, recomendaciones, alertas)
 - [ ] Configurar `ANTHROPIC_API_KEY` para usar Claude real
+
+### Dashboard Mobile-First - Session 13
+- [x] Componente `MetricCardSwipeable.vue` touch-friendly
+- [x] Horizontal scroll con snap para métricas
+- [x] Header responsive (compacto en mobile)
+- [x] Componente `RecommendationsCard.vue` con prioridades
+- [x] Componente `AlertsList.vue` con severidades
+- [x] Secciones separadas: Métricas, Tendencias, Alertas, Recomendaciones
+- [x] Scrollbar oculto para UX limpia
 
 ### PDF
 - [ ] Integrar Puppeteer o servicio externo
