@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { ref, reactive, computed, watch } from 'vue'
+import { COLOR_PALETTES } from '../../../types/dashboard-wizard'
+
 definePageMeta({
   layout: 'dashboard',
   title: 'Dashboard Editor',
@@ -15,26 +18,20 @@ const { currentDashboard, isLoading, fetchDashboard, updateDashboard, getPublicU
 // Widget state
 const widgets = ref<any[]>([])
 const isSaving = ref(false)
-const saveMessage = ref('')
+const saveStatus = ref<'idle' | 'saving' | 'saved' | 'error'>('idle')
+const lastSavedAt = ref<Date | null>(null)
 
-// Settings
-const showSettings = ref(false)
-const settings = reactive({
-  name: '',
-  isPublic: true,
-  password: '',
-  clearPassword: false,
+// Branding state
+const branding = reactive({
+  logoUrl: '',
+  primaryColor: COLOR_PALETTES[0]?.primary ?? '#1e40af',
+  secondaryColor: COLOR_PALETTES[0]?.secondary ?? '#1f2937',
 })
 
-// Fetch dashboard on mount
-onMounted(async () => {
-  const dashboard = await fetchDashboard(dashboardId.value)
-  if (dashboard) {
-    widgets.value = dashboard.widgets || []
-    settings.name = dashboard.name
-    settings.isPublic = dashboard.isPublic
-  }
-})
+// Settings state
+const dashboardName = ref('')
+const isPublic = ref(true)
+const hasPassword = ref(false)
 
 // Available widget types
 const widgetTypes = [
@@ -46,6 +43,34 @@ const widgetTypes = [
   { type: 'text', label: 'Text Block', icon: 'heroicons:document-text', description: 'Custom text/notes' },
 ]
 
+// Fetch dashboard on mount
+onMounted(async () => {
+  const dashboard = await fetchDashboard(dashboardId.value)
+  if (dashboard) {
+    widgets.value = dashboard.widgets || []
+    dashboardName.value = dashboard.name
+    isPublic.value = dashboard.isPublic
+    hasPassword.value = dashboard.hasPassword || false
+
+    // Load branding if available (dashboard may have branding as extra data)
+    const dashboardData = dashboard as any
+    if (dashboardData.branding) {
+      branding.logoUrl = dashboardData.branding.logoUrl || ''
+      branding.primaryColor = dashboardData.branding.primaryColor || COLOR_PALETTES[0]?.primary || '#1e40af'
+      branding.secondaryColor = dashboardData.branding.secondaryColor || COLOR_PALETTES[0]?.secondary || '#1f2937'
+    }
+  }
+})
+
+// Computed branding for preview
+const previewBranding = computed(() => ({
+  logoUrl: branding.logoUrl,
+  primaryColor: branding.primaryColor,
+  secondaryColor: branding.secondaryColor,
+  clientName: currentDashboard.value?.client?.name || '',
+}))
+
+// Widget handlers
 function addWidget(type: string) {
   const widgetType = widgetTypes.find(w => w.type === type)
   widgets.value.push({
@@ -55,100 +80,127 @@ function addWidget(type: string) {
     config: {},
     size: 'medium',
   })
+  triggerAutoSave()
 }
 
 function removeWidget(id: string) {
   widgets.value = widgets.value.filter(w => w.id !== id)
+  triggerAutoSave()
 }
 
-function moveWidget(index: number, direction: 'up' | 'down') {
-  const newIndex = direction === 'up' ? index - 1 : index + 1
-  if (newIndex < 0 || newIndex >= widgets.value.length) return
-
-  const temp = widgets.value[index]
-  widgets.value[index] = widgets.value[newIndex]
-  widgets.value[newIndex] = temp
+function updateWidget(updatedWidget: any) {
+  const index = widgets.value.findIndex(w => w.id === updatedWidget.id)
+  if (index !== -1) {
+    widgets.value[index] = updatedWidget
+    triggerAutoSave()
+  }
 }
 
-async function saveDashboard() {
+function reorderWidgets(fromIndex: number, toIndex: number) {
+  const widget = widgets.value.splice(fromIndex, 1)[0]
+  widgets.value.splice(toIndex, 0, widget)
+  triggerAutoSave()
+}
+
+// Branding handlers
+function handleColorsUpdate(primary: string, secondary: string) {
+  branding.primaryColor = primary
+  branding.secondaryColor = secondary
+  triggerAutoSave()
+}
+
+function handleLogoUpdate(url: string) {
+  branding.logoUrl = url
+  triggerAutoSave()
+}
+
+// Settings handlers
+function handleNameUpdate(name: string) {
+  dashboardName.value = name
+  triggerAutoSave()
+}
+
+function handlePublicUpdate(value: boolean) {
+  isPublic.value = value
+  triggerAutoSave()
+}
+
+async function handlePasswordUpdate(password: string | undefined) {
+  await saveDashboard({ password })
+  hasPassword.value = !!password
+}
+
+async function handleClearPassword() {
+  await saveDashboard({ password: null })
+  hasPassword.value = false
+}
+
+// Auto-save with debounce
+let saveTimeout: ReturnType<typeof setTimeout> | null = null
+
+function triggerAutoSave() {
+  if (saveTimeout) {
+    clearTimeout(saveTimeout)
+  }
+  saveTimeout = setTimeout(() => {
+    saveDashboard()
+  }, 1500)
+}
+
+async function saveDashboard(additionalData: Record<string, any> = {}) {
   if (isSaving.value) return
 
   isSaving.value = true
-  saveMessage.value = ''
+  saveStatus.value = 'saving'
 
   try {
-    const result = await updateDashboard(dashboardId.value, {
+    const data = {
+      name: dashboardName.value,
       widgets: widgets.value,
-    })
-
-    if (result.success) {
-      saveMessage.value = 'Saved!'
-      setTimeout(() => {
-        saveMessage.value = ''
-      }, 2000)
-    }
-    else {
-      saveMessage.value = result.error || 'Failed to save'
-    }
-  }
-  finally {
-    isSaving.value = false
-  }
-}
-
-async function saveSettings() {
-  if (isSaving.value) return
-
-  isSaving.value = true
-
-  try {
-    const data: any = {
-      name: settings.name,
-      isPublic: settings.isPublic,
-    }
-
-    if (settings.clearPassword) {
-      data.password = null
-    }
-    else if (settings.password) {
-      data.password = settings.password
+      isPublic: isPublic.value,
+      branding: {
+        logoUrl: branding.logoUrl,
+        primaryColor: branding.primaryColor,
+        secondaryColor: branding.secondaryColor,
+      },
+      ...additionalData,
     }
 
     const result = await updateDashboard(dashboardId.value, data)
 
     if (result.success) {
-      showSettings.value = false
-      settings.password = ''
-      settings.clearPassword = false
+      saveStatus.value = 'saved'
+      lastSavedAt.value = new Date()
+      setTimeout(() => {
+        if (saveStatus.value === 'saved') {
+          saveStatus.value = 'idle'
+        }
+      }, 2000)
+    } else {
+      saveStatus.value = 'error'
     }
-    else {
-      alert(result.error || 'Failed to save settings')
-    }
-  }
-  finally {
+  } finally {
     isSaving.value = false
   }
 }
 
 async function handleCopyLink() {
   if (!currentDashboard.value) return
-  const success = await copyPublicUrl(currentDashboard.value.slug)
-  if (success) {
-    alert('Link copied to clipboard!')
-  }
+  await copyPublicUrl(currentDashboard.value.slug)
 }
 
-function getWidgetIcon(type: string) {
-  return widgetTypes.find(w => w.type === type)?.icon || 'heroicons:square-3-stack-3d'
+// Format time for display
+function formatSaveTime(date: Date): string {
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 </script>
 
 <template>
-  <div>
+  <div class="min-h-[calc(100vh-120px)]">
     <!-- Loading state -->
     <div
       v-if="isLoading"
-      class="flex items-center justify-center py-12"
+      class="flex items-center justify-center py-24"
     >
       <Icon
         name="heroicons:arrow-path"
@@ -159,7 +211,7 @@ function getWidgetIcon(type: string) {
     <!-- Dashboard not found -->
     <div
       v-else-if="!currentDashboard"
-      class="text-center py-12"
+      class="text-center py-24"
     >
       <Icon
         name="heroicons:presentation-chart-line"
@@ -179,362 +231,150 @@ function getWidgetIcon(type: string) {
     <!-- Dashboard editor -->
     <div v-else>
       <!-- Header -->
-      <div class="flex items-start justify-between mb-6">
-        <div>
-          <NuxtLink
-            :to="`/${tenant}/dashboards`"
-            class="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-2"
-          >
-            <Icon
-              name="heroicons:arrow-left"
-              class="w-4 h-4"
-            />
-            Back to Dashboards
-          </NuxtLink>
-          <h1 class="text-2xl font-bold text-gray-900">
-            {{ currentDashboard.name }}
-          </h1>
-          <div class="flex items-center gap-3 mt-1">
-            <span class="text-gray-500">{{ currentDashboard.client.name }}</span>
-            <span
-              :class="[
-                'badge',
-                currentDashboard.isPublic ? 'badge-success' : 'badge-warning',
-              ]"
-            >
-              {{ currentDashboard.isPublic ? 'Public' : 'Private' }}
-            </span>
-            <span
-              v-if="currentDashboard.hasPassword"
-              class="badge"
+      <div class="mb-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <NuxtLink
+              :to="`/${tenant}/dashboards`"
+              class="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1 mb-2"
             >
               <Icon
-                name="heroicons:lock-closed"
-                class="w-3 h-3 mr-1"
+                name="heroicons:arrow-left"
+                class="w-4 h-4"
               />
-              Password protected
-            </span>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-3">
-          <span
-            v-if="saveMessage"
-            class="text-sm text-green-600"
-          >
-            {{ saveMessage }}
-          </span>
-
-          <button
-            v-if="currentDashboard.isPublic"
-            class="btn-secondary"
-            @click="handleCopyLink"
-          >
-            <Icon
-              name="heroicons:link"
-              class="w-4 h-4 mr-2"
-            />
-            Copy Link
-          </button>
-
-          <a
-            v-if="currentDashboard.isPublic"
-            :href="getPublicUrl(currentDashboard.slug)"
-            target="_blank"
-            class="btn-secondary"
-          >
-            <Icon
-              name="heroicons:arrow-top-right-on-square"
-              class="w-4 h-4 mr-2"
-            />
-            Preview
-          </a>
-
-          <button
-            class="btn-secondary"
-            @click="showSettings = true"
-          >
-            <Icon
-              name="heroicons:cog-6-tooth"
-              class="w-4 h-4 mr-2"
-            />
-            Settings
-          </button>
-
-          <button
-            class="btn-primary"
-            :disabled="isSaving"
-            @click="saveDashboard"
-          >
-            <Icon
-              v-if="isSaving"
-              name="heroicons:arrow-path"
-              class="w-4 h-4 mr-2 animate-spin"
-            />
-            <Icon
-              v-else
-              name="heroicons:cloud-arrow-up"
-              class="w-4 h-4 mr-2"
-            />
-            Save
-          </button>
-        </div>
-      </div>
-
-      <!-- Main content area -->
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <!-- Widget palette -->
-        <div class="lg:col-span-1">
-          <div class="card card-body sticky top-4">
-            <h3 class="font-semibold text-gray-900 mb-4">
-              Add Widgets
-            </h3>
-            <div class="space-y-2">
-              <button
-                v-for="widget in widgetTypes"
-                :key="widget.type"
-                class="w-full p-3 text-left rounded-lg border border-gray-200 hover:border-tamarindo-300 hover:bg-tamarindo-50 transition-colors"
-                @click="addWidget(widget.type)"
-              >
-                <div class="flex items-center gap-3">
-                  <Icon
-                    :name="widget.icon"
-                    class="w-5 h-5 text-gray-500"
-                  />
-                  <div>
-                    <p class="font-medium text-gray-900 text-sm">
-                      {{ widget.label }}
-                    </p>
-                    <p class="text-xs text-gray-500">
-                      {{ widget.description }}
-                    </p>
-                  </div>
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Canvas area -->
-        <div class="lg:col-span-3">
-          <!-- Empty state -->
-          <div
-            v-if="widgets.length === 0"
-            class="card card-body border-dashed text-center py-16"
-          >
-            <Icon
-              name="heroicons:squares-plus"
-              class="mx-auto h-12 w-12 text-gray-400"
-            />
-            <h3 class="mt-2 text-sm font-medium text-gray-900">
-              No widgets yet
-            </h3>
-            <p class="mt-1 text-sm text-gray-500">
-              Click on a widget type from the sidebar to add it to your dashboard.
-            </p>
-          </div>
-
-          <!-- Widgets list -->
-          <div
-            v-else
-            class="space-y-4"
-          >
-            <div
-              v-for="(widget, index) in widgets"
-              :key="widget.id"
-              class="card hover:shadow-md transition-shadow"
-            >
-              <div class="card-body">
-                <div class="flex items-start justify-between">
-                  <div class="flex items-center gap-3">
-                    <Icon
-                      :name="getWidgetIcon(widget.type)"
-                      class="w-5 h-5 text-gray-500"
-                    />
-                    <div>
-                      <input
-                        v-model="widget.title"
-                        type="text"
-                        class="font-medium text-gray-900 bg-transparent border-none focus:outline-none focus:ring-0 p-0"
-                      >
-                      <p class="text-xs text-gray-500 capitalize">
-                        {{ widget.type.replace('-', ' ') }}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div class="flex items-center gap-1">
-                    <button
-                      class="p-1 text-gray-400 hover:text-gray-600"
-                      title="Move up"
-                      :disabled="index === 0"
-                      @click="moveWidget(index, 'up')"
-                    >
-                      <Icon
-                        name="heroicons:chevron-up"
-                        class="w-4 h-4"
-                      />
-                    </button>
-                    <button
-                      class="p-1 text-gray-400 hover:text-gray-600"
-                      title="Move down"
-                      :disabled="index === widgets.length - 1"
-                      @click="moveWidget(index, 'down')"
-                    >
-                      <Icon
-                        name="heroicons:chevron-down"
-                        class="w-4 h-4"
-                      />
-                    </button>
-                    <button
-                      class="p-1 text-gray-400 hover:text-red-600"
-                      title="Remove"
-                      @click="removeWidget(widget.id)"
-                    >
-                      <Icon
-                        name="heroicons:trash"
-                        class="w-4 h-4"
-                      />
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Widget preview placeholder -->
-                <div class="mt-4 bg-gray-50 rounded-lg p-8 text-center">
-                  <Icon
-                    :name="getWidgetIcon(widget.type)"
-                    class="mx-auto h-8 w-8 text-gray-300"
-                  />
-                  <p class="mt-2 text-sm text-gray-400">
-                    Widget preview
-                  </p>
-                </div>
-
-                <!-- Size selector -->
-                <div class="mt-4 flex items-center gap-2">
-                  <span class="text-xs text-gray-500">Size:</span>
-                  <button
-                    v-for="size in ['small', 'medium', 'large']"
-                    :key="size"
-                    :class="[
-                      'px-2 py-1 text-xs rounded',
-                      widget.size === size
-                        ? 'bg-tamarindo-100 text-tamarindo-700'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
-                    ]"
-                    @click="widget.size = size"
-                  >
-                    {{ size }}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Settings Modal -->
-    <div
-      v-if="showSettings"
-      class="fixed inset-0 z-50 flex items-center justify-center"
-    >
-      <div
-        class="absolute inset-0 bg-black/50"
-        @click="showSettings = false"
-      />
-      <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">
-          Dashboard Settings
-        </h2>
-
-        <form
-          class="space-y-4"
-          @submit.prevent="saveSettings"
-        >
-          <div>
-            <label
-              for="settingsName"
-              class="label"
-            >Dashboard Name</label>
-            <input
-              id="settingsName"
-              v-model="settings.name"
-              type="text"
-              class="input"
-              required
-            >
+              Back to Dashboards
+            </NuxtLink>
+            <h1 class="text-2xl font-bold text-gray-900">
+              Edit Dashboard
+            </h1>
           </div>
 
           <div class="flex items-center gap-3">
-            <input
-              id="settingsPublic"
-              v-model="settings.isPublic"
-              type="checkbox"
-              class="w-4 h-4 rounded border-gray-300 text-tamarindo-600 focus:ring-tamarindo-500"
-            >
-            <label
-              for="settingsPublic"
-              class="text-sm text-gray-700"
-            >
-              Make this dashboard publicly accessible
-            </label>
-          </div>
-
-          <div v-if="settings.isPublic">
-            <label
-              for="settingsPassword"
-              class="label"
-            >Change Password</label>
-            <input
-              id="settingsPassword"
-              v-model="settings.password"
-              type="password"
-              class="input"
-              placeholder="Enter new password"
-            >
-
-            <div
-              v-if="currentDashboard?.hasPassword"
-              class="mt-2 flex items-center gap-2"
-            >
-              <input
-                id="clearPassword"
-                v-model="settings.clearPassword"
-                type="checkbox"
-                class="w-4 h-4 rounded border-gray-300 text-tamarindo-600"
-              >
-              <label
-                for="clearPassword"
-                class="text-sm text-gray-600"
-              >
-                Remove password protection
-              </label>
+            <!-- Save Status -->
+            <div class="flex items-center gap-2 text-sm">
+              <template v-if="saveStatus === 'saving'">
+                <Icon
+                  name="heroicons:arrow-path"
+                  class="w-4 h-4 animate-spin text-gray-400"
+                />
+                <span class="text-gray-500">Saving...</span>
+              </template>
+              <template v-else-if="saveStatus === 'saved'">
+                <Icon
+                  name="heroicons:check-circle"
+                  class="w-4 h-4 text-green-500"
+                />
+                <span class="text-green-600">Saved</span>
+              </template>
+              <template v-else-if="saveStatus === 'error'">
+                <Icon
+                  name="heroicons:exclamation-circle"
+                  class="w-4 h-4 text-red-500"
+                />
+                <span class="text-red-600">Error saving</span>
+              </template>
+              <template v-else-if="lastSavedAt">
+                <span class="text-gray-400">
+                  Last saved {{ formatSaveTime(lastSavedAt) }}
+                </span>
+              </template>
             </div>
-          </div>
 
-          <div class="flex justify-end gap-3 pt-4">
+            <!-- Copy Link -->
             <button
+              v-if="isPublic"
               type="button"
               class="btn-secondary"
-              @click="showSettings = false"
+              @click="handleCopyLink"
             >
-              Cancel
+              <Icon
+                name="heroicons:link"
+                class="w-4 h-4 mr-2"
+              />
+              Copy Link
             </button>
+
+            <!-- Manual Save -->
             <button
-              type="submit"
+              type="button"
               class="btn-primary"
               :disabled="isSaving"
+              @click="saveDashboard()"
             >
               <Icon
                 v-if="isSaving"
                 name="heroicons:arrow-path"
                 class="w-4 h-4 mr-2 animate-spin"
               />
-              Save Settings
+              <Icon
+                v-else
+                name="heroicons:cloud-arrow-up"
+                class="w-4 h-4 mr-2"
+              />
+              Save
             </button>
           </div>
-        </form>
+        </div>
+      </div>
+
+      <!-- Main Content: 2-column layout -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Column: Configuration Panels -->
+        <div class="lg:col-span-1 space-y-4">
+          <!-- Dashboard Info Panel -->
+          <DashboardEditorInfoPanel
+            :name="dashboardName"
+            :client-name="currentDashboard.client?.name || 'Unknown Client'"
+            :is-public="isPublic"
+            :has-password="hasPassword"
+            @update:name="handleNameUpdate"
+            @update:is-public="handlePublicUpdate"
+            @update:password="handlePasswordUpdate"
+            @clear-password="handleClearPassword"
+          />
+
+          <!-- Branding Panel -->
+          <DashboardEditorBrandingPanel
+            :logo-url="branding.logoUrl"
+            :primary-color="branding.primaryColor"
+            :secondary-color="branding.secondaryColor"
+            :color-palettes="COLOR_PALETTES"
+            @update:logo-url="handleLogoUpdate"
+            @update:primary-color="(c) => handleColorsUpdate(c, branding.secondaryColor)"
+            @update:secondary-color="(c) => handleColorsUpdate(branding.primaryColor, c)"
+            @update:colors="handleColorsUpdate"
+          />
+
+          <!-- Widgets Panel -->
+          <DashboardEditorWidgetList
+            :widgets="widgets"
+            :widget-types="widgetTypes"
+            @add="addWidget"
+            @remove="removeWidget"
+            @update="updateWidget"
+            @reorder="reorderWidgets"
+          />
+        </div>
+
+        <!-- Right Column: Live Preview -->
+        <div class="lg:col-span-2">
+          <div class="sticky top-4">
+            <h3 class="text-sm font-medium text-gray-500 mb-3">
+              Live Preview
+            </h3>
+            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden min-h-[600px]">
+              <DashboardLivePreview
+                :widgets="widgets"
+                :branding="previewBranding"
+                :dashboard-name="dashboardName"
+                :editable="true"
+                :show-header="true"
+                @remove-widget="removeWidget"
+                @reorder-widgets="reorderWidgets"
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

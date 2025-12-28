@@ -9,50 +9,11 @@ const route = useRoute()
 const tenant = computed(() => route.params.tenant as string)
 
 const { dashboards, isLoading, fetchDashboards, deleteDashboard, copyPublicUrl, getPublicUrl } = useDashboards()
-const { clients, fetchClients } = useClients()
-
-// Modal state
-const showCreateModal = ref(false)
-const isCreating = ref(false)
-const createForm = reactive({
-  name: '',
-  clientId: '',
-  isPublic: true,
-  password: '',
-})
 
 // Fetch on mount
 onMounted(() => {
   fetchDashboards()
-  fetchClients()
 })
-
-async function handleCreate() {
-  if (!createForm.name || !createForm.clientId) return
-
-  isCreating.value = true
-  const { createDashboard } = useDashboards()
-
-  const result = await createDashboard({
-    name: createForm.name,
-    clientId: createForm.clientId,
-    isPublic: createForm.isPublic,
-    password: createForm.password || undefined,
-    widgets: [],
-  })
-
-  if (result.success) {
-    showCreateModal.value = false
-    createForm.name = ''
-    createForm.clientId = ''
-    createForm.password = ''
-  }
-  else {
-    alert(result.error || 'Failed to create dashboard')
-  }
-
-  isCreating.value = false
-}
 
 async function handleDelete(dashboard: any) {
   if (!confirm(`Are you sure you want to delete "${dashboard.name}"?`)) {
@@ -93,16 +54,16 @@ function formatDate(dateString: string) {
           Create shareable dashboards for your clients.
         </p>
       </div>
-      <button
+      <NuxtLink
+        :to="`/${tenant}/dashboards/new`"
         class="btn-primary"
-        @click="showCreateModal = true"
       >
         <Icon
           name="heroicons:plus"
           class="w-5 h-5 mr-2"
         />
         Create Dashboard
-      </button>
+      </NuxtLink>
     </div>
 
     <!-- Loading state -->
@@ -236,134 +197,18 @@ function formatDate(dateString: string) {
         <p class="mt-1 text-sm text-gray-500">
           Create a dashboard to share insights with your clients.
         </p>
-        <button
+        <NuxtLink
+          :to="`/${tenant}/dashboards/new`"
           class="btn-primary mt-4 inline-flex"
-          @click="showCreateModal = true"
         >
           <Icon
             name="heroicons:plus"
             class="w-5 h-5 mr-2"
           />
           Create Dashboard
-        </button>
+        </NuxtLink>
       </div>
     </div>
 
-    <!-- Create Modal -->
-    <div
-      v-if="showCreateModal"
-      class="fixed inset-0 z-50 flex items-center justify-center"
-    >
-      <div
-        class="absolute inset-0 bg-black/50"
-        @click="showCreateModal = false"
-      />
-      <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">
-          Create Dashboard
-        </h2>
-
-        <form
-          class="space-y-4"
-          @submit.prevent="handleCreate"
-        >
-          <div>
-            <label
-              for="name"
-              class="label"
-            >Dashboard Name</label>
-            <input
-              id="name"
-              v-model="createForm.name"
-              type="text"
-              class="input"
-              placeholder="e.g., Monthly Performance"
-              required
-            >
-          </div>
-
-          <div>
-            <label
-              for="client"
-              class="label"
-            >Client</label>
-            <select
-              id="client"
-              v-model="createForm.clientId"
-              class="select"
-              required
-            >
-              <option
-                value=""
-                disabled
-              >
-                Select a client
-              </option>
-              <option
-                v-for="client in clients"
-                :key="client.id"
-                :value="client.id"
-              >
-                {{ client.name }}
-              </option>
-            </select>
-          </div>
-
-          <div class="flex items-center gap-3">
-            <input
-              id="isPublic"
-              v-model="createForm.isPublic"
-              type="checkbox"
-              class="w-4 h-4 rounded border-gray-300 text-tamarindo-600 focus:ring-tamarindo-500"
-            >
-            <label
-              for="isPublic"
-              class="text-sm text-gray-700"
-            >
-              Make this dashboard publicly accessible
-            </label>
-          </div>
-
-          <div v-if="createForm.isPublic">
-            <label
-              for="password"
-              class="label"
-            >Password Protection (Optional)</label>
-            <input
-              id="password"
-              v-model="createForm.password"
-              type="password"
-              class="input"
-              placeholder="Leave empty for no password"
-            >
-            <p class="text-xs text-gray-500 mt-1">
-              Viewers will need this password to access the dashboard.
-            </p>
-          </div>
-
-          <div class="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              class="btn-secondary"
-              @click="showCreateModal = false"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              class="btn-primary"
-              :disabled="isCreating || !createForm.name || !createForm.clientId"
-            >
-              <Icon
-                v-if="isCreating"
-                name="heroicons:arrow-path"
-                class="w-4 h-4 mr-2 animate-spin"
-              />
-              Create
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
   </div>
 </template>
