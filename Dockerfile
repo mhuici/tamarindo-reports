@@ -19,9 +19,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/db/package.json ./packages/db/
 COPY packages/types/package.json ./packages/types/
-COPY packages/ai/package.json ./packages/ai/
 COPY packages/integrations/package.json ./packages/integrations/
-COPY packages/queue/package.json ./packages/queue/
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
