@@ -6,6 +6,11 @@
 export default defineNuxtRouteMiddleware(async (to) => {
   const { user, fetchUser, isLoading } = useAuth()
 
+  // Skip middleware for API routes (handled by server-side auth)
+  if (to.path.startsWith('/api/')) {
+    return
+  }
+
   // Public routes that don't require authentication
   const publicRoutes = ['/', '/login', '/register', '/forgot-password', '/reset-password']
   const isPublicRoute = publicRoutes.includes(to.path) || to.path.startsWith('/d/')
