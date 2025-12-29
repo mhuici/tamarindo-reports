@@ -226,6 +226,7 @@ function generateReportHTML(params: GeneratePDFParams): string {
 
   const primaryColor = branding?.primaryColor || '#f97316'
   const companyName = branding?.companyName || tenantName || 'TamarindoReports'
+  const logoUrl = branding?.logoUrl
 
   // Format date range
   const startDate = new Date(dateRange.start).toLocaleDateString('es-ES', {
@@ -318,6 +319,28 @@ function generateReportHTML(params: GeneratePDFParams): string {
       font-size: 12px;
       margin-top: 8px;
       display: inline-block;
+    }
+
+    .header .logo-section {
+      margin-bottom: 15px;
+    }
+
+    .header .logo-img {
+      max-height: 50px;
+      max-width: 180px;
+      object-fit: contain;
+    }
+
+    .header .logo-fallback {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      background: rgba(255,255,255,0.25);
+      border-radius: 10px;
+      font-size: 24px;
+      font-weight: 700;
     }
 
     /* Sections */
@@ -492,6 +515,12 @@ function generateReportHTML(params: GeneratePDFParams): string {
     <div class="header">
       <div class="header-content">
         <div>
+          <div class="logo-section">
+            ${logoUrl
+    ? `<img src="${logoUrl}" alt="${companyName}" class="logo-img" />`
+    : `<div class="logo-fallback">${companyName.charAt(0).toUpperCase()}</div>`
+}
+          </div>
           <h1>${reportName}</h1>
           <div class="client-name">${clientName}</div>
           <div class="company-badge">${companyName}</div>

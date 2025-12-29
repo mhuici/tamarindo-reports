@@ -3,6 +3,12 @@ import { z } from 'zod'
 import { requireAuth } from '../../utils/auth'
 import { prisma } from '../../utils/db'
 import { syncMetrics } from '../../utils/metrics/service'
+import {
+  categorizeIntegrationError,
+  formatIntegrationErrorForUser,
+  needsReconnection,
+  type IntegrationError,
+} from '../../utils/integration-errors'
 
 const bodySchema = z.object({
   dataSourceId: z.string().min(1),
@@ -63,6 +69,11 @@ export default defineEventHandler(async (event) => {
     }
 
     const results = []
+    let hasAuthError = false
+    let authError: IntegrationError | null = null
+
+    // Determine platform type
+    const platform = dataSource.type === 'GOOGLE_ADS' ? 'google_ads' : 'facebook_ads'
 
     for (const account of accountsToSync) {
       try {
@@ -75,36 +86,70 @@ export default defineEventHandler(async (event) => {
         })
       }
       catch (error) {
+        // Categorize the error properly
+        const integrationError = categorizeIntegrationError(error, platform)
+
+        // Track if we have an auth error that requires reconnection
+        if (needsReconnection(integrationError)) {
+          hasAuthError = true
+          authError = integrationError
+        }
+
         results.push({
           accountId: account.id,
           accountName: account.name,
           success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: integrationError.message,
+          errorCode: integrationError.code,
+          action: integrationError.action,
         })
       }
+    }
+
+    // If all accounts failed with auth error, throw to trigger reconnection flow
+    const allFailed = results.every(r => !r.success)
+    if (allFailed && hasAuthError && authError) {
+      const formatted = formatIntegrationErrorForUser(authError)
+      throw createError({
+        statusCode: 401,
+        message: formatted.message,
+        data: {
+          code: authError.code,
+          action: authError.action,
+          platform: authError.platform,
+          actionLabel: formatted.actionLabel,
+        },
+      })
     }
 
     return {
       success: true,
       message: `Synced ${results.filter(r => r.success).length}/${results.length} accounts`,
       results,
+      hasErrors: results.some(r => !r.success),
     }
   }
   catch (error) {
-    console.error('Error syncing metrics:', error)
-
-    // Check if it's a token error
-    if (error instanceof Error && error.message.includes('Token')) {
-      throw createError({
-        statusCode: 401,
-        message: error.message,
-        data: { code: 'TOKEN_EXPIRED', action: 'reconnect' },
-      })
+    // If it's already an H3 error, rethrow it
+    if (error && typeof error === 'object' && 'statusCode' in error) {
+      throw error
     }
 
+    console.error('Error syncing metrics:', error)
+
+    // Categorize unknown errors
+    const platform = 'google_ads' // Default, actual platform already handled above
+    const integrationError = categorizeIntegrationError(error, platform)
+    const formatted = formatIntegrationErrorForUser(integrationError)
+
     throw createError({
-      statusCode: 500,
-      message: error instanceof Error ? error.message : 'Failed to sync metrics',
+      statusCode: integrationError.code === 'TOKEN_EXPIRED' ? 401 : 500,
+      message: formatted.message,
+      data: {
+        code: integrationError.code,
+        action: integrationError.action,
+        actionLabel: formatted.actionLabel,
+      },
     })
   }
 })
