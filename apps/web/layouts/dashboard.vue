@@ -6,6 +6,7 @@ const { user, logout } = useAuth()
 const navigation = computed(() => [
   { name: 'Dashboard', href: `/${tenant.value}`, icon: 'heroicons:home' },
   { name: 'Clients', href: `/${tenant.value}/clients`, icon: 'heroicons:users' },
+  { name: 'Dashboards', href: `/${tenant.value}/dashboards`, icon: 'heroicons:presentation-chart-line' },
   { name: 'Reports', href: `/${tenant.value}/reports`, icon: 'heroicons:document-chart-bar' },
   { name: 'Integrations', href: `/${tenant.value}/integrations`, icon: 'heroicons:puzzle-piece' },
   { name: 'Settings', href: `/${tenant.value}/settings`, icon: 'heroicons:cog-6-tooth' },
