@@ -30,6 +30,8 @@ interface NarrativeResult {
   narrative: string
   tokensUsed?: number
   cached?: boolean
+  /** True if this result was generated from mock data (no AI API call) */
+  isFallback?: boolean
 }
 
 interface DashboardNarratives {

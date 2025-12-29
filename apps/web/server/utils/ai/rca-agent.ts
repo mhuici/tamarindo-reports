@@ -25,6 +25,8 @@ export interface RCAResult {
   causes: RCACause[]
   summary: string
   tokensUsed?: number
+  /** True if this result was generated from mock data (no AI API call) */
+  isFallback: boolean
 }
 
 /**
@@ -79,12 +81,14 @@ export async function analyzeMetricChange(input: RCAInput): Promise<RCAResult> {
       },
       causes: [],
       summary: `${metricLabel} se mantuvo estable con un cambio de ${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(1)}%. No se detectaron variaciones significativas.`,
+      isFallback: false, // Not a fallback, just no significant change
     }
   }
 
   // Check if Claude is configured
   if (!isClaudeConfigured()) {
-    return generateMockRCA(metricName, metricLabel, changeValue, changePercent, direction)
+    const mockResult = generateMockRCA(metricName, metricLabel, changeValue, changePercent, direction)
+    return { ...mockResult, isFallback: true }
   }
 
   try {
@@ -138,13 +142,15 @@ export async function analyzeMetricChange(input: RCAInput): Promise<RCAResult> {
       causes: analysis.causes,
       summary: analysis.summary,
       tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
+      isFallback: false,
     }
   }
   catch (error: any) {
     console.error('RCA analysis failed:', error)
 
     // Fallback to mock if API fails
-    return generateMockRCA(metricName, metricLabel, changeValue, changePercent, direction)
+    const mockResult = generateMockRCA(metricName, metricLabel, changeValue, changePercent, direction)
+    return { ...mockResult, isFallback: true }
   }
 }
 
@@ -262,6 +268,7 @@ function generateMockRCA(
     },
     causes,
     summary: summaryTemplates[direction],
+    isFallback: false, // Will be overwritten to true by caller when used as fallback
   }
 }
 

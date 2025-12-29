@@ -105,6 +105,8 @@ export interface NarrativeResult {
   narrative: string
   tokensUsed?: number
   cached?: boolean
+  /** True if this result was generated from mock data (no AI API call) */
+  isFallback: boolean
 }
 
 /**
@@ -219,6 +221,7 @@ export async function generateNarrative(request: NarrativeRequest): Promise<Narr
       type: request.type,
       narrative: generateMockNarrative(request),
       cached: false,
+      isFallback: true,
     }
   }
 
@@ -252,6 +255,7 @@ export async function generateNarrative(request: NarrativeRequest): Promise<Narr
       narrative,
       tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
       cached: false,
+      isFallback: false,
     }
   }
   catch (error: any) {
@@ -261,6 +265,7 @@ export async function generateNarrative(request: NarrativeRequest): Promise<Narr
       type: request.type,
       narrative: generateMockNarrative(request),
       cached: false,
+      isFallback: true,
     }
   }
 }

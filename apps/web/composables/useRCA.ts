@@ -23,6 +23,8 @@ interface RCAResult {
   causes: RCACause[]
   summary: string
   tokensUsed?: number
+  /** True if this result was generated from mock data (no AI API call) */
+  isFallback: boolean
 }
 
 interface RCAContext {
@@ -46,6 +48,7 @@ export function useRCA() {
   const cache = useState<Map<string, RCAResult>>('rca-cache', () => new Map())
   const loading = useState<Map<string, boolean>>('rca-loading', () => new Map())
   const errors = useState<Map<string, string>>('rca-errors', () => new Map())
+  const fallbacks = useState<Map<string, boolean>>('rca-fallbacks', () => new Map())
 
   /**
    * Check if a metric change is significant enough for RCA
@@ -107,6 +110,7 @@ export function useRCA() {
 
       if (response.success && response.result) {
         cache.value.set(cacheKey, response.result)
+        fallbacks.value.set(cacheKey, response.result.isFallback || false)
         return response.result
       }
 
@@ -155,6 +159,7 @@ export function useRCA() {
           if (metric) {
             const cacheKey = getCacheKey(metric, context)
             cache.value.set(cacheKey, result)
+            fallbacks.value.set(cacheKey, result.isFallback || false)
           }
         })
 
@@ -194,12 +199,28 @@ export function useRCA() {
   }
 
   /**
+   * Check if a cached result is a fallback (mock data)
+   */
+  function isFallback(metric: MetricInput, context: RCAContext): boolean {
+    const cacheKey = getCacheKey(metric, context)
+    return fallbacks.value.get(cacheKey) || false
+  }
+
+  /**
+   * Check if any cached result is a fallback
+   */
+  function hasAnyFallback(): boolean {
+    return Array.from(fallbacks.value.values()).some(v => v)
+  }
+
+  /**
    * Clear all cached results
    */
   function clearCache(): void {
     cache.value.clear()
     loading.value.clear()
     errors.value.clear()
+    fallbacks.value.clear()
   }
 
   return {
@@ -209,6 +230,8 @@ export function useRCA() {
     isLoading,
     getError,
     getCachedResult,
+    isFallback,
+    hasAnyFallback,
     clearCache,
     SIGNIFICANT_CHANGE_THRESHOLD,
   }
