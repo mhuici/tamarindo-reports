@@ -62,8 +62,8 @@ RUN addgroup -g 1001 -S nodejs && \
 
 WORKDIR /app
 
-# Copy built application from builder
-COPY --from=builder --chown=nuxt:nodejs /app/.output ./.output
+# Copy built application from builder (output is in apps/web/.output)
+COPY --from=builder --chown=nuxt:nodejs /app/apps/web/.output ./.output
 COPY --from=builder --chown=nuxt:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nuxt:nodejs /app/packages/db/prisma ./packages/db/prisma
 COPY --from=builder --chown=nuxt:nodejs /app/packages/db/node_modules ./packages/db/node_modules
