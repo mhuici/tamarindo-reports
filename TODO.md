@@ -1,6 +1,6 @@
 # TamarindoReports - TODO & Pendientes
 
-> Última actualización: 2025-12-28 (Post-Session 14)
+> Última actualización: 2025-12-28 (Post-Session 17)
 
 ## Resumen de Progreso
 
@@ -22,7 +22,7 @@
 | 14 | Canonical Metrics & Platform Adapters | ✅ |
 | 15 | Dashboard Wizard & Editor Unificado | ✅ |
 | 16 | Logo Storage (R2/S3) | 🔄 Pendiente |
-| 17 | Error Handling Producción | 🔄 Pendiente |
+| 17 | Error Handling Producción | ✅ |
 | 18 | Testing & Polish | 🔄 Pendiente |
 
 ---
@@ -219,28 +219,44 @@ PUPPETEER_ENABLED=true    # Habilitado por defecto
 - [ ] Migrar de blob URLs a URLs persistentes
 - [ ] Aplicar logo en PDF generado
 
-### Session 17: Error Handling Producción
-**Casos críticos a manejar:**
+### Session 17: Error Handling Producción ✅
+**Implementado:**
 
-1. **División por cero en RCA**
-   - [ ] Métricas con 0 clics o 0 gasto
-   - [ ] Validar datos antes de enviar a Claude
+1. **División por cero en RCA** ✅ (ya estaba protegido)
+   - [x] Métricas con 0 clics o 0 gasto - validaciones existentes
+   - [x] Validar datos antes de enviar a Claude
 
-2. **Tokens expirados**
-   - [ ] Detectar token expirado (401/403)
-   - [ ] UI para reconectar integración
-   - [ ] Notificación al usuario
+2. **Tokens expirados** ✅
+   - [x] Detectar token expirado (401/403) con `categorizeIntegrationError()`
+   - [x] UI para reconectar integración (`IntegrationErrorBanner.vue`)
+   - [x] Notificación al usuario con acciones claras
 
-3. **Rate limits de APIs**
-   - [ ] Anthropic: límites estrictos al inicio
-   - [ ] Google/Facebook: quotas diarias
-   - [ ] Implementar retry con backoff exponencial
-   - [ ] Cola de requests si es necesario
+3. **Rate limits de APIs** ✅
+   - [x] Utility `withRetry()` con backoff exponencial (`server/utils/retry.ts`)
+   - [x] Configuración específica para AI APIs (`AI_RETRY_OPTIONS`)
+   - [x] Configuración para integraciones (`INTEGRATION_RETRY_OPTIONS`)
+   - [x] Retry automático con jitter para evitar thundering herd
 
-4. **Fallbacks graceful**
-   - [ ] Si AI falla → mostrar datos sin narrativa
-   - [ ] Si integración falla → mostrar último cache
-   - [ ] Mensajes de error user-friendly
+4. **Fallbacks graceful** ✅
+   - [x] Si AI falla → fallback a mock con flag `isFallback: true`
+   - [x] Composables propagan `isFallback` al frontend
+   - [x] Componente `AIFallbackBadge.vue` para indicar datos demo
+   - [x] Mensajes de error user-friendly en español
+
+**Archivos creados:**
+- `server/utils/retry.ts` - Retry utility con backoff exponencial
+- `server/utils/integration-errors.ts` - Manejo de errores de integración
+- `components/common/IntegrationErrorBanner.vue` - Banner de error
+- `components/common/AIFallbackBadge.vue` - Indicador de fallback
+
+**Archivos modificados:**
+- `server/utils/ai/claude.ts` - `callClaudeWithRetry()` con categorización de errores
+- `server/utils/ai/openai.ts` - `callOpenAIWithRetry()` con categorización
+- `server/utils/ai/rca-agent.ts` - `isFallback` en resultados
+- `server/utils/ai/narrative-engine.ts` - `isFallback` en resultados
+- `server/api/metrics/sync.post.ts` - Manejo robusto de errores
+- `composables/useRCA.ts` - `isFallback()` y `hasAnyFallback()`
+- `composables/useNarrative.ts` - `isFallback` en interfaz
 
 ### Session 18: Testing & Polish
 - [ ] Test E2E: crear cliente → dashboard → compartir

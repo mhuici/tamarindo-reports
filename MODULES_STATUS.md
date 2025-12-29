@@ -1,425 +1,261 @@
 # TamarindoReports - Module Status
 
-> Last updated: 2025-12-27 (Session 10)
+> Last updated: 2025-12-29 (Session 17)
 
 ## Overview
 
-| Module | Status | Progress | Owner |
+| Module | Status | Progress | Notes |
 |--------|--------|----------|-------|
-| Core (Auth/Tenant) | 🟢 Completed | 100% | - |
-| Database | 🟢 Completed | 100% | - |
-| UI Base | 🟢 Completed | 100% | - |
-| Integrations | 🟢 Completed | 90% | - |
-| Metrics Service | 🟢 Completed | 100% | - |
-| Reports | 🟡 In Progress | 85% | - |
-| Dashboards | 🟢 Completed | 100% | - |
-| AI Insights | 🟡 In Progress | 70% | - |
-| White Label | 🟢 Completed | 100% | - |
-| PDF Worker | 🟡 In Progress | 40% | - |
-
----
-
-## Detailed Status
-
-### Core (Auth/Tenant)
-**Status:** 🟢 Completed (100%)
-
-- [x] Project structure setup
-- [x] Nuxt 4 configuration
-- [x] Tailwind + base styles
-- [x] Layout system (default, dashboard)
-- [x] Landing page
-- [x] Login/Register pages (connected to API)
-- [x] JWT authentication utils
-- [x] Auth API routes (login, logout, me, register, profile, password)
-- [x] Password hashing (crypto)
-- [x] useAuth composable
-- [x] Global auth middleware
-- [x] Tenant middleware (validates access)
-- [x] Protected dashboard routes
-- [x] User menu with logout
-- [x] Settings page (profile, password)
-- [x] Client CRUD (useClients composable + UI)
-- [ ] Google OAuth login (future)
-
-**Files:**
-- `apps/web/server/utils/auth.ts` - JWT utilities
-- `apps/web/server/api/auth/*` - Auth endpoints
-- `apps/web/composables/useAuth.ts` - Auth composable
-- `apps/web/composables/useClients.ts` - Client management
-- `apps/web/middleware/auth.global.ts` - Auth protection
-- `apps/web/middleware/tenant.ts` - Tenant validation
-
----
-
-### Database
-**Status:** 🟢 Completed (100%)
-
-- [x] Prisma schema defined
-- [x] All models created
-- [x] Docker Compose for local dev
-- [x] Environment variables
-- [x] Seed script with demo data
-- [x] Query helpers (tenant, user, client)
-- [x] Encryption utilities for tokens
-
-**Files:**
-- `packages/db/prisma/schema.prisma`
-- `packages/db/src/helpers/*`
-- `docker-compose.yml`
-
-**Run locally:**
-```bash
-docker-compose up -d
-pnpm db:push
-pnpm db:seed
-```
-
----
-
-### UI Base
-**Status:** 🟡 In Progress (50%)
-
-- [x] Tailwind configuration
-- [x] Brand colors (tamarindo)
-- [x] Base components (btn, card, input, badge)
-- [x] Dashboard layout with sidebar
-- [x] Navigation structure
-- [x] Basic pages scaffolded
-- [ ] Tremor.so components integration
-- [ ] Form validation (zod + UI)
-- [ ] Toast notifications
-- [ ] Modal system
-- [ ] Loading states
-
----
-
-### API Routes
-**Status:** 🟡 In Progress
-
-Implemented:
-- `GET /api/tenants/:slug` - Get tenant public info
-- `POST /api/auth/login` - Login with email/password
-- `POST /api/auth/logout` - Clear auth cookie
-- `GET /api/auth/me` - Get current user
-- `POST /api/auth/register` - Register new user + tenant
-- `GET /api/clients` - List clients
-- `POST /api/clients` - Create client
-- `GET /api/clients/:id` - Get client details
-- `PUT /api/clients/:id` - Update client
-- `DELETE /api/clients/:id` - Delete client
-
-Reports:
-- `GET /api/reports` - List reports (with filters)
-- `POST /api/reports` - Create report
-- `GET /api/reports/:id` - Get report details
-- `PUT /api/reports/:id` - Update report
-- `DELETE /api/reports/:id` - Delete report
-
-Dashboards:
-- `GET /api/dashboards` - List dashboards (with filters)
-- `POST /api/dashboards` - Create dashboard
-- `GET /api/dashboards/:id` - Get dashboard details
-- `PUT /api/dashboards/:id` - Update dashboard
-- `DELETE /api/dashboards/:id` - Delete dashboard
-- `GET /api/dashboards/public/:slug` - Public dashboard view
-
-AI:
-- `POST /api/ai/insights` - Generate AI insights for report
-- `GET /api/ai/status` - Check AI service status
-
-PDF:
-- `POST /api/pdf/generate` - Generate PDF for report
-- `GET /api/pdf/status` - Check PDF service status
-
-Pending:
-- (none)
-
----
-
-### Integrations
-**Status:** 🟢 Completed (90%)
-
-- [x] DataConnector interface
-- [x] Google Ads connector with real API
-- [x] Facebook Ads connector with real API
-- [x] Google OAuth flow (connect + callback)
-- [x] Facebook OAuth flow (connect + callback)
-- [x] Token encryption/storage
-- [x] Token refresh handling
-- [x] useIntegrations composable
-- [x] Integrations UI with status
-- [x] Disconnect functionality
-- [x] Account listing (Google Ads API)
-- [x] Metrics fetching (Google Ads + Facebook Ads)
-- [ ] Background sync job (BullMQ)
-
----
-
-### Metrics Service
-**Status:** 🟢 Completed (100%)
-
-- [x] MetricsService with sync, aggregation, caching
-- [x] API: /api/metrics/sync.post - Manual sync trigger
-- [x] API: /api/metrics/for-client.get - Get metrics for client
-- [x] API: /api/metrics/widget-data.get - Get data for specific widget
-- [x] API: /api/metrics/public.get - Public dashboard metrics
-- [x] Token refresh on expiration
-- [x] Cache metrics in DB with 1-hour TTL
-- [x] Previous period comparison calculation
-- [x] Widget data transformation
-
-**Files:**
-- `apps/web/server/utils/metrics/service.ts` - Main service
-- `apps/web/server/api/metrics/*` - API endpoints
-
-**⚠️ PENDIENTE DE CONFIGURAR Y PROBAR:**
-```
-# Requiere configurar en .env:
-GOOGLE_CLIENT_ID=<from Google Cloud Console>
-GOOGLE_CLIENT_SECRET=<from Google Cloud Console>
-FACEBOOK_APP_ID=<from Meta Developer Portal>
-FACEBOOK_APP_SECRET=<from Meta Developer Portal>
-
-# También requiere:
-1. Crear proyecto en Google Cloud Console
-2. Habilitar Google Ads API
-3. Configurar OAuth consent screen
-4. Crear app en Meta Developer Portal
-5. Configurar redirect URIs en ambos
-```
-
-**Files:**
-- `apps/web/server/api/integrations/*` - OAuth endpoints
-- `apps/web/composables/useIntegrations.ts` - State management
-- `packages/integrations/src/*` - Connector classes
-
----
-
-### Reports
-**Status:** 🟡 In Progress (60%)
-
-- [x] Report CRUD API (list, create, read, update, delete)
-- [x] useReports composable
-- [x] Reports list page with filters
-- [x] Create report page (type, client, date range)
-- [x] Report editor page (add/remove widgets)
-- [x] Basic widget components (Metric, Chart, Table, Text)
-- [x] WidgetRenderer component
-- [ ] Full drag & drop reordering
-- [ ] Widget configuration panel
-- [ ] Report preview mode
-- [ ] Report scheduling
-- [ ] Email delivery
-
-**Files:**
-- `apps/web/server/api/reports/*` - CRUD endpoints
-- `apps/web/composables/useReports.ts` - State management
-- `apps/web/pages/[tenant]/reports/*` - Report pages
-- `apps/web/components/reports/widgets/*` - Widget components
-
----
-
-### Dashboards
-**Status:** 🟡 In Progress (80%)
-
-- [x] Dashboard CRUD API (list, create, read, update, delete)
-- [x] useDashboards composable
-- [x] Dashboards list page with create modal
-- [x] Dashboard editor page with widget management
-- [x] Public dashboard view (`/d/[slug]`)
-- [x] Shareable link generation (unique slug)
-- [x] Copy link to clipboard
-- [x] Password protection
-- [x] Link expiration support
-- [ ] Real-time updates (SSE)
-- [ ] Widget data integration
-
-**Files:**
-- `apps/web/server/api/dashboards/*` - CRUD endpoints
-- `apps/web/server/api/dashboards/public/[slug].get.ts` - Public access
-- `apps/web/composables/useDashboards.ts` - State management
-- `apps/web/pages/[tenant]/dashboards/*` - Dashboard pages
-- `apps/web/pages/d/[slug].vue` - Public view
-
----
-
-### AI Insights
-**Status:** 🟡 In Progress (70%)
-
-- [x] OpenAI client configuration
-- [x] Insights prompt engineering (Spanish)
-- [x] Generate insights API endpoint
-- [x] AI status check endpoint
-- [x] Mock insights for testing without API key
-- [x] UI for generating and displaying insights
-- [ ] Widget recommendations generation
-- [ ] Historical data comparison
-- [ ] Custom prompt configuration
-
-**Files:**
-- `apps/web/server/utils/ai/openai.ts` - OpenAI client
-- `apps/web/server/utils/ai/prompts.ts` - Prompt templates
-- `apps/web/server/utils/ai/insights.ts` - Insights generation
-- `apps/web/server/api/ai/*` - API endpoints
-
-**⚠️ PENDIENTE DE CONFIGURAR:**
-```
-OPENAI_API_KEY=<from platform.openai.com>
-```
-
----
-
-### White Label
-**Status:** 🟢 Completed (100%)
-
-- [x] Branding settings page
-- [x] Company name configuration
-- [x] Logo URL configuration
-- [x] Primary/secondary color customization
-- [x] Color palette presets
-- [x] Live preview in settings
-- [x] API endpoint for branding update
-- [x] Branding applied in public dashboards
-- [x] Favicon configuration
-
-**Files:**
-- `apps/web/pages/[tenant]/settings/branding.vue` - Branding settings UI
-- `apps/web/server/api/tenants/branding.put.ts` - Update branding API
-- `apps/web/pages/d/[slug].vue` - Public dashboard with branding
-
----
-
-### PDF Worker
-**Status:** 🟡 In Progress (40%)
-
-- [x] PDF generator service structure
-- [x] Generate PDF API endpoint
-- [x] PDF status check endpoint
-- [x] Mock PDF for testing
-- [x] Support for external PDF services
-- [ ] Puppeteer integration (placeholder ready)
-- [ ] BullMQ job processing for async generation
-- [ ] R2/S3 storage upload
-- [ ] PDF template styling
-
-**Files:**
-- `apps/web/server/utils/pdf/generator.ts` - PDF generation service
-- `apps/web/server/api/pdf/*` - API endpoints
-
-**⚠️ PENDIENTE DE CONFIGURAR:**
-```
-# Option 1: External PDF service
-PDF_SERVICE_URL=<browserless.io or similar>
-PDF_SERVICE_API_KEY=<api key>
-
-# Option 2: Puppeteer
-PUPPETEER_ENABLED=true
-
-# Storage for PDFs
-R2_ACCESS_KEY_ID=<cloudflare r2>
-R2_SECRET_ACCESS_KEY=<cloudflare r2>
-R2_BUCKET_NAME=tamarindo-pdfs
-```
+| Core (Auth/Tenant) | ✅ Completed | 100% | JWT + middleware |
+| Database | ✅ Completed | 100% | PostgreSQL + Prisma |
+| UI Base | ✅ Completed | 100% | Tailwind + mobile-first |
+| Integrations | ✅ Completed | 95% | OAuth structure ready |
+| Metrics Service | ✅ Completed | 100% | Sync + cache + adapters |
+| Reports | ✅ Completed | 90% | CRUD + widgets + PDF |
+| Dashboards | ✅ Completed | 100% | Wizard + editor + public |
+| AI Insights | ✅ Completed | 95% | Claude + OpenAI + fallbacks |
+| White Label | ✅ Completed | 95% | Pending logo storage |
+| PDF Generation | ✅ Completed | 100% | Puppeteer local |
+| Error Handling | ✅ Completed | 100% | Retry + fallbacks |
 
 ---
 
 ## Sessions Completed
 
-### Session 1: Foundation ✅
-- Monorepo setup
-- Nuxt 4 + Tailwind
-- Database schema
-- Basic UI pages
+| Session | Description | Status |
+|---------|-------------|--------|
+| 1 | Foundation (monorepo, Nuxt 4, Tailwind) | ✅ |
+| 2 | Database Setup (Docker, Prisma, seed) | ✅ |
+| 3 | Auth System (login, register, middleware) | ✅ |
+| 4 | Multi-tenant Core (tenant, clients, settings) | ✅ |
+| 5 | Integrations (Google Ads, Facebook Ads OAuth) | ✅ |
+| 6 | Report Builder (CRUD, widgets) | ✅ |
+| 7 | Dashboards (shareable, password protection) | ✅ |
+| 8 | AI Insights & PDF structure | ✅ |
+| 9 | White Label & Polish | ✅ |
+| 10 | Metrics Service & Real Data Integration | ✅ |
+| 11 | PDF Generation with Puppeteer | ✅ |
+| 12 | RCA, Forecasting, Narrative Engine (Claude AI) | ✅ |
+| 13 | Dashboard Mobile-First | ✅ |
+| 14 | Canonical Metrics & Platform Adapters | ✅ |
+| 15 | Dashboard Wizard & Editor Unificado | ✅ |
+| 16 | Logo Storage (R2/S3) | 🔄 Pending |
+| 17 | Error Handling Production | ✅ |
+| 18 | Testing & Polish | 🔄 Pending |
 
-### Session 2: Database Setup ✅
-- Docker Compose (PostgreSQL + Redis)
-- Query helpers (tenant, user, client)
-- Encryption utilities
-- Auth API routes
-- Client CRUD API
+---
 
-### Session 3: Auth System ✅
-- useAuth composable with login/register/logout
-- Global auth middleware
-- Protected dashboard routes
-- User menu with logout button
-- Registration API endpoint
-- Connected login/register pages to API
+## Detailed Module Status
 
-### Session 4: Multi-tenant Core ✅
-- Tenant middleware (validates user access to tenant routes)
-- useClients composable for state management
-- Client CRUD UI with modal forms
-- Settings page with profile and password management
-- API endpoints for profile and password updates
+### Core (Auth/Tenant) ✅
+- [x] JWT authentication with httpOnly cookies
+- [x] User registration with tenant creation
+- [x] Login/logout
+- [x] Global auth middleware
+- [x] Tenant middleware (validates access)
+- [x] Client CRUD
+- [x] Settings (profile, password)
 
-### Session 5: Integrations Setup ✅
-- Google Ads OAuth flow (connect + callback)
-- Facebook Ads OAuth flow (connect + callback)
-- useIntegrations composable
-- Integration connection UI with status tracking
-- Disconnect functionality
-- Encrypted token storage
+**Files:**
+- `apps/web/server/utils/auth.ts`
+- `apps/web/server/api/auth/*`
+- `apps/web/composables/useAuth.ts`
+- `apps/web/middleware/auth.global.ts`
 
-### Session 6: Report Builder ✅
-- Report CRUD API (index.get, index.post, [id].get, [id].put, [id].delete)
-- useReports composable with full state management
-- Reports list page with type/status filters
-- Create report page (type selection, client selection, date range presets)
-- Report editor page with widget management
-- Widget components (Metric, Chart, Table, Text)
-- WidgetRenderer component for dynamic rendering
+---
 
-### Session 7: Dashboards ✅
-- Dashboard CRUD API (index.get, index.post, [id].get, [id].put, [id].delete)
-- Public dashboard API (public/[slug].get)
-- useDashboards composable with state management
-- Dashboards list page with create modal
-- Dashboard editor with widget management
-- Public dashboard view (`/d/[slug]`)
-- Shareable link with unique slug generation
-- Copy link to clipboard functionality
-- Password protection with SHA256 hashing
-- Link expiration support
+### Integrations ✅
+- [x] Google Ads OAuth flow
+- [x] Facebook Ads OAuth flow
+- [x] Encrypted token storage
+- [x] Token refresh handling
+- [x] Account listing
+- [x] Metrics fetching
+- [ ] Real API keys (requires configuration)
 
-### Session 8: AI Insights & PDF ✅
-- OpenAI client configuration and singleton
-- Prompt engineering for marketing insights (Spanish)
-- Generate insights API endpoint with mock fallback
-- AI status check endpoint
-- UI for generating and displaying insights in report editor
-- PDF generator service structure
-- Generate PDF API endpoint with mock fallback
-- PDF status check endpoint
-- Support for external PDF services (Browserless, etc.)
-- Puppeteer placeholder (ready for implementation)
+**Files:**
+- `apps/web/server/api/integrations/*`
+- `apps/web/composables/useIntegrations.ts`
 
-### Session 9: White Label ✅
-- Branding settings page with live preview
-- Company name and tagline configuration
-- Logo and favicon URL configuration
-- Primary/secondary color customization
-- Color palette presets (Tamarindo, Ocean, Forest, Sunset, Purple, Gold)
-- API endpoint for updating branding
-- Branding applied in public dashboards (header, footer)
-- TODO.md with complete project status
+---
 
-### Session 10: Metrics Service & Real Data ✅
-- MetricsService for syncing and aggregating data
-- API endpoints for metrics (sync, for-client, widget-data, public)
-- Google Ads real API integration with google-ads-api
-- Facebook Ads real API integration with Marketing API
-- Token refresh and error handling
-- Metrics caching in database
-- Public dashboard real-time metrics integration
-- Widget data transformation
+### Metrics Service ✅
+- [x] MetricsService with sync, aggregation, caching
+- [x] Canonical metrics schema (impressions, clicks, spend, CTR, CPC, CPM, ROAS)
+- [x] Google Ads adapter
+- [x] Facebook Ads adapter
+- [x] TikTok Ads adapter
+- [x] 1-hour cache TTL
+- [x] Previous period comparison
 
-### Future Sessions (Pending)
-- [ ] Puppeteer integration for PDF generation
-- [ ] Email delivery for reports
-- [ ] Unit and E2E tests
-- [ ] Background sync jobs with BullMQ
+**Files:**
+- `apps/web/server/utils/metrics/service.ts`
+- `packages/types/src/canonical-metrics.ts`
+
+---
+
+### AI Features ✅
+
+#### Claude (Anthropic) - Primary
+- [x] RCA Agent (Root Cause Analysis) - analyzes >10% metric changes
+- [x] Narrative Engine - executive summaries, insights, recommendations
+- [x] Forecasting (Holt-Winters) - 80% and 95% confidence intervals
+- [x] Retry with exponential backoff
+- [x] Mock fallback when no API key
+
+#### OpenAI - Legacy
+- [x] Insights generation
+- [x] Spanish prompts
+
+**Files:**
+- `apps/web/server/utils/ai/claude.ts`
+- `apps/web/server/utils/ai/rca-agent.ts`
+- `apps/web/server/utils/ai/narrative-engine.ts`
+- `apps/web/server/utils/ai/forecast.ts`
+- `apps/web/server/api/ai/*`
+
+---
+
+### Dashboards ✅
+- [x] CRUD API
+- [x] Public shareable links (`/d/[slug]`)
+- [x] Password protection (SHA256)
+- [x] Link expiration
+- [x] Wizard creation (3 steps: Objective, Metrics, Branding)
+- [x] Live preview during creation
+- [x] Auto-generate widgets by objective
+- [x] Unified editor (2-column layout)
+- [x] Auto-save with debounce
+- [x] Drag-drop widget reordering
+
+**Files:**
+- `apps/web/pages/[tenant]/dashboards/*`
+- `apps/web/components/dashboard/*`
+- `apps/web/composables/useDashboards.ts`
+- `apps/web/composables/useDashboardWizard.ts`
+
+---
+
+### Mobile-First UI ✅
+- [x] MetricCardSwipeable with horizontal scroll + snap
+- [x] Responsive header (compact on mobile)
+- [x] RecommendationsCard with priorities
+- [x] AlertsList with severities
+- [x] Sections: Metrics, Trends, Alerts, Recommendations
+- [x] Hidden scrollbar for clean UX
+
+**Files:**
+- `apps/web/components/mobile/*`
+- `apps/web/components/ai/*`
+
+---
+
+### PDF Generation ✅
+- [x] Puppeteer local generation
+- [x] Generate PDF endpoint
+- [x] Download button in UI
+- [ ] Upload to R2/S3 (pending)
+- [ ] Styled PDF template
+
+**Files:**
+- `apps/web/server/utils/pdf/generator.ts`
+- `apps/web/server/api/pdf/*`
+
+---
+
+### White Label ✅
+- [x] Branding settings page
+- [x] Logo upload with color extraction
+- [x] Primary/secondary color customization
+- [x] Color palette presets
+- [x] Live preview
+- [x] Branding applied in public dashboards
+- [ ] Persist logo to R2/S3 (pending)
+
+**Files:**
+- `apps/web/pages/[tenant]/settings/branding.vue`
+- `apps/web/composables/useColorExtraction.ts`
+
+---
+
+### Error Handling ✅
+- [x] `withRetry()` utility with exponential backoff + jitter
+- [x] AI retry options (AI_RETRY_OPTIONS)
+- [x] Integration retry options (INTEGRATION_RETRY_OPTIONS)
+- [x] `categorizeIntegrationError()` for token expiration detection
+- [x] Graceful fallbacks with `isFallback` flag
+- [x] `IntegrationErrorBanner.vue` for reconnection UI
+- [x] `AIFallbackBadge.vue` indicator
+- [x] User-friendly error messages in Spanish
+
+**Files:**
+- `apps/web/server/utils/retry.ts`
+- `apps/web/server/utils/integration-errors.ts`
+- `apps/web/components/common/*`
+
+---
+
+## API Routes Summary
+
+### Auth
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `GET /api/auth/me`
+- `POST /api/auth/register`
+- `PUT /api/auth/profile`
+- `PUT /api/auth/password`
+
+### Clients
+- `GET /api/clients`
+- `POST /api/clients`
+- `GET /api/clients/:id`
+- `PUT /api/clients/:id`
+- `DELETE /api/clients/:id`
+
+### Integrations
+- `GET /api/integrations`
+- `GET /api/integrations/google-ads/connect`
+- `GET /api/integrations/google-ads/callback`
+- `GET /api/integrations/facebook-ads/connect`
+- `GET /api/integrations/facebook-ads/callback`
+- `DELETE /api/integrations/:id`
+
+### Metrics
+- `POST /api/metrics/sync`
+- `GET /api/metrics/for-client`
+- `GET /api/metrics/widget-data`
+- `GET /api/metrics/public`
+
+### Reports
+- `GET /api/reports`
+- `POST /api/reports`
+- `GET /api/reports/:id`
+- `PUT /api/reports/:id`
+- `DELETE /api/reports/:id`
+
+### Dashboards
+- `GET /api/dashboards`
+- `POST /api/dashboards`
+- `GET /api/dashboards/:id`
+- `PUT /api/dashboards/:id`
+- `DELETE /api/dashboards/:id`
+- `GET /api/dashboards/public/:slug`
+
+### AI
+- `POST /api/ai/insights`
+- `POST /api/ai/rca`
+- `POST /api/ai/forecast`
+- `POST /api/ai/narrative`
+- `GET /api/ai/status`
+
+### PDF
+- `POST /api/pdf/generate`
+- `GET /api/pdf/status`
+
+### Tenants
+- `GET /api/tenants/:slug`
+- `PUT /api/tenants/branding`
+- `POST /api/tenants/logo`
 
 ---
 
@@ -449,3 +285,12 @@ pnpm dev
 - Email: `admin@demo.agency`
 - Password: `demo123`
 - URL: `http://localhost:3000/demo`
+
+---
+
+## Pending for Production
+
+1. **Logo Storage** - Configure R2/S3 for persistent logos
+2. **API Keys** - ANTHROPIC_API_KEY, GOOGLE_CLIENT_ID/SECRET, FACEBOOK_APP_ID/SECRET
+3. **Testing** - E2E tests, performance benchmarks
+4. **Deployment** - Railway, Vercel, or similar

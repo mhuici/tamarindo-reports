@@ -1,22 +1,25 @@
 # TamarindoReports - Testing Checklist
 
-> Este documento lista las funcionalidades que requieren testing manual y configuración antes de producción.
+> Este documento lista las funcionalidades que requieren testing manual y configuracion antes de produccion.
+> Last updated: 2025-12-29 (Session 17)
 
 ## Estado General
 
-| Módulo | Unit Tests | Integration | Manual Testing | Producción Ready |
+| Modulo | Unit Tests | Integration | Manual Testing | Produccion Ready |
 |--------|------------|-------------|----------------|------------------|
-| Auth | ❌ | ❌ | ✅ Probado | 🟡 |
-| Clients | ❌ | ❌ | ✅ Probado | 🟡 |
-| Integrations | ❌ | ❌ | ⚠️ Pendiente | 🔴 |
-| Reports | ❌ | ❌ | ⚠️ Pendiente | 🔴 |
-| Dashboards | ❌ | ❌ | ⚠️ Pendiente | 🔴 |
-| PDF Worker | ❌ | ❌ | ⚠️ Estructura | 🔴 |
-| AI Insights | ❌ | ❌ | ⚠️ Pendiente | 🔴 |
+| Auth | - | - | Probado | Ready |
+| Clients | - | - | Probado | Ready |
+| Integrations | - | - | Estructura | Needs Config |
+| Reports | - | - | Probado | Ready |
+| Dashboards | - | - | Probado | Ready |
+| AI (Claude) | - | - | Probado | Ready |
+| AI (OpenAI) | - | - | Probado | Ready |
+| PDF | - | - | Probado | Ready |
+| Error Handling | - | - | Probado | Ready |
 
 ---
 
-## 1. Autenticación (Probado ✅)
+## 1. Autenticacion (Probado)
 
 ### Funcional
 - [x] Login con email/password
@@ -25,35 +28,32 @@
 - [x] Middleware auth global (redirige a login)
 - [x] Middleware tenant (valida acceso)
 - [x] Actualizar perfil
-- [x] Cambiar contraseña
+- [x] Cambiar password
 
 ### Pendiente de Probar
 - [ ] Token expiration y refresh
 - [ ] Rate limiting en login
-- [ ] Validación de email único en registro
-- [ ] Google OAuth login (no implementado aún)
+- [ ] Validacion de email unico en registro
 
 ---
 
-## 2. Clientes (Probado ✅)
+## 2. Clientes (Probado)
 
 ### Funcional
 - [x] Listar clientes del tenant
 - [x] Crear cliente nuevo
 - [x] Editar cliente
 - [x] Eliminar cliente
-- [x] Filtro por estado activo/inactivo
 
 ### Pendiente de Probar
-- [ ] Paginación con muchos clientes (>100)
-- [ ] Validación de campos requeridos en formulario
-- [ ] Manejo de errores de red
+- [ ] Paginacion con muchos clientes (>100)
+- [ ] Validacion de campos requeridos
 
 ---
 
-## 3. Integraciones OAuth (⚠️ REQUIERE CONFIGURACIÓN)
+## 3. Integraciones OAuth (Requiere Configuracion)
 
-### Prerrequisitos para Probar
+### Prerrequisitos
 
 ```bash
 # Configurar en .env:
@@ -63,211 +63,183 @@ FACEBOOK_APP_ID=<obtener de Meta Developer Portal>
 FACEBOOK_APP_SECRET=<obtener de Meta Developer Portal>
 ```
 
-### Pasos para Configurar Google Ads API
-1. Ir a [Google Cloud Console](https://console.cloud.google.com)
-2. Crear proyecto nuevo o seleccionar existente
-3. Habilitar APIs:
-   - Google Ads API
-   - Google Analytics Data API (opcional)
-4. Configurar OAuth consent screen:
-   - User Type: External
-   - App name, email, logo
-   - Scopes: `https://www.googleapis.com/auth/adwords`
-5. Crear OAuth 2.0 Client ID:
-   - Application type: Web application
-   - Authorized redirect URIs:
-     - `http://localhost:3000/api/integrations/google-ads/callback`
-     - `https://tudominio.com/api/integrations/google-ads/callback`
-6. Copiar Client ID y Client Secret
-
-### Pasos para Configurar Facebook Ads API
-1. Ir a [Meta Developer Portal](https://developers.facebook.com)
-2. Crear nueva app (tipo Business)
-3. Agregar productos:
-   - Facebook Login
-   - Marketing API
-4. Configurar Facebook Login:
-   - Valid OAuth Redirect URIs:
-     - `http://localhost:3000/api/integrations/facebook-ads/callback`
-     - `https://tudominio.com/api/integrations/facebook-ads/callback`
-5. Copiar App ID y App Secret
-6. Solicitar permisos en App Review:
-   - `ads_read`
-   - `read_insights`
-
 ### Flujos a Probar
 - [ ] Conectar Google Ads (OAuth flow completo)
 - [ ] Callback de Google guarda tokens encriptados
 - [ ] Conectar Facebook Ads (OAuth flow completo)
 - [ ] Callback de Facebook guarda tokens encriptados
-- [ ] Desconectar integración elimina tokens
+- [ ] Desconectar integracion elimina tokens
 - [ ] UI muestra estado correcto (connected/disconnected)
 - [ ] Refresh de tokens cuando expiran
+- [ ] Error banner cuando token expira
 
 ---
 
-## 4. Reportes (⚠️ Pendiente Testing Manual)
+## 4. Dashboards (Probado)
 
-### Funcional Implementado
-- [x] API CRUD completa
-- [x] Lista de reportes con filtros
-- [x] Crear reporte nuevo
-- [x] Editor de reporte
-- [x] Agregar/quitar widgets
-- [x] Guardar borrador
+### Funcional
+- [x] CRUD completo
+- [x] Wizard de creacion (3 pasos)
+- [x] Live preview durante creacion
+- [x] Editor unificado (2 columnas)
+- [x] Auto-save con debounce
+- [x] Drag-drop para reordenar widgets
+- [x] Links publicos `/d/[slug]`
+- [x] Password protection
+- [x] Link expiration
+- [x] Branding aplicado en vista publica
 
 ### Pendiente de Probar
-- [ ] Crear reporte seleccionando cliente
-- [ ] Filtros por tipo (Monthly, Weekly, Campaign, Custom)
-- [ ] Filtros por estado (Draft, Completed, Scheduled)
-- [ ] Presets de fecha funcionan correctamente
-- [ ] Widgets se guardan y cargan correctamente
-- [ ] Cambiar tamaño de widgets
-- [ ] Reordenar widgets (mover arriba/abajo)
-- [ ] Eliminar reporte
-- [ ] Estado "GENERATING" simula generación
-
-### Widgets Pendientes de Testing
-- [ ] WidgetMetric muestra valor y tendencia
-- [ ] WidgetChart renderiza línea/barra/pie
-- [ ] WidgetTable muestra datos tabulares
-- [ ] WidgetText permite edición
-
-### Integración Pendiente
-- [ ] Widgets conectados a datos reales de integraciones
-- [ ] Selector de métricas por fuente de datos
+- [ ] Dashboard con muchos widgets (>20)
+- [ ] Rendimiento del live preview
 
 ---
 
-## 5. Dashboards (⚠️ Pendiente Testing Manual)
+## 5. AI Features (Probado con Mocks)
 
-### Funcional Implementado
-- [x] API CRUD completa
-- [x] Lista de dashboards
-- [x] Crear dashboard con modal
-- [x] Editor de dashboard
-- [x] Vista pública sin autenticación
-- [x] Generación de slug único
-- [x] Copiar link al portapapeles
-- [x] Protección con contraseña
-- [x] Soporte de expiración
+### RCA (Root Cause Analysis)
+- [x] Endpoint `/api/ai/rca` funciona
+- [x] Mock fallback cuando no hay API key
+- [x] Componente `WidgetInsight.vue` muestra analisis
+- [x] Flag `isFallback` se propaga al frontend
+- [ ] Probar con ANTHROPIC_API_KEY real
 
-### Pendiente de Probar
-- [ ] Crear dashboard seleccionando cliente
-- [ ] Configurar como público/privado
-- [ ] Acceder via link público `/d/[slug]`
-- [ ] Ingresar contraseña correcta muestra dashboard
-- [ ] Ingresar contraseña incorrecta muestra error
-- [ ] Dashboard expirado muestra mensaje de error
-- [ ] Dashboard privado muestra error 403
-- [ ] Copiar link funciona en navegador
-- [ ] Widgets se guardan y cargan correctamente
-- [ ] Settings modal actualiza nombre/público/contraseña
+### Forecasting
+- [x] Algoritmo Holt-Winters implementado
+- [x] Intervalos de confianza 80% y 95%
+- [x] Componente `ForecastChart.vue` funciona
+- [x] Manejo de datos invalidos (labels de fecha)
 
----
+### Narrative Engine
+- [x] Endpoint `/api/ai/narrative` funciona
+- [x] Mock fallback cuando no hay API key
+- [x] Componente `NarrativeCard.vue` con estilos
+- [x] Tipos: executive-summary, widget-insight, recommendation, alert
+- [ ] Probar con ANTHROPIC_API_KEY real
 
-## 6. PDF Worker (⚠️ Estructura Lista)
-
-### Funcional Implementado
-- [x] PDF generator service structure
-- [x] Generate PDF API endpoint
-- [x] PDF status check endpoint
-- [x] Mock PDF for testing
-- [x] Support for external PDF services
-
-### Pendiente de Probar
-- [ ] External PDF service integration (Browserless, etc.)
-- [ ] Puppeteer local generation
-- [ ] R2/S3 storage upload
-- [ ] PDF download from report page
-
-### Configuración Requerida
+### Configuracion Requerida
 ```bash
-# Option 1: External PDF service
-PDF_SERVICE_URL=<browserless.io or similar>
-PDF_SERVICE_API_KEY=<api key>
-
-# Option 2: Puppeteer
-PUPPETEER_ENABLED=true
+# Para AI real (opcional, hay fallback a mocks)
+ANTHROPIC_API_KEY=sk-ant-...  # Obtener en console.anthropic.com
+OPENAI_API_KEY=sk-...          # Obtener en platform.openai.com
 ```
 
 ---
 
-## 7. AI Insights (⚠️ Pendiente Testing Manual)
+## 6. PDF Generation (Probado)
 
-### Funcional Implementado
-- [x] OpenAI client configuration
-- [x] Insights prompt engineering (Spanish)
-- [x] Generate insights API endpoint
-- [x] Mock insights for testing without API key
-- [x] AI status check endpoint
-- [x] UI for generating and displaying insights
+### Funcional
+- [x] Puppeteer genera PDF localmente
+- [x] Endpoint `/api/pdf/generate` funciona
+- [x] Boton de descarga en UI
+- [x] Status endpoint `/api/pdf/status`
+
+### Pendiente
+- [ ] Subir PDFs a R2/S3
+- [ ] Template de PDF con estilos personalizados
+- [ ] Branding del tenant en PDF
+
+---
+
+## 7. Error Handling (Probado)
+
+### Funcional
+- [x] `withRetry()` con exponential backoff
+- [x] Jitter para evitar thundering herd
+- [x] `AI_RETRY_OPTIONS` configurado
+- [x] `INTEGRATION_RETRY_OPTIONS` configurado
+- [x] `categorizeIntegrationError()` detecta token expirado
+- [x] `IntegrationErrorBanner.vue` muestra UI de reconexion
+- [x] `AIFallbackBadge.vue` indica datos demo
+- [x] Fallback graceful para AI (mock data)
+
+---
+
+## 8. Mobile-First UI (Probado)
+
+### Funcional
+- [x] `MetricCardSwipeable.vue` con scroll horizontal
+- [x] Snap scroll para metricas
+- [x] Header responsive (compacto en mobile)
+- [x] `RecommendationsCard.vue` con prioridades
+- [x] `AlertsList.vue` con severidades
+- [x] Scrollbar oculto
 
 ### Pendiente de Probar
-- [ ] Generar insights con API key real de OpenAI
-- [ ] Verificar formato de respuesta con GPT-4o-mini
-- [ ] Regenerar insights (sobrescribe anterior)
-- [ ] Insights sin datos de métricas (recomendaciones generales)
-- [ ] Manejo de errores (rate limit, API key inválida)
-
-### Configuración Requerida
-```bash
-OPENAI_API_KEY=<obtener de platform.openai.com>
-```
-
-### Modelo Utilizado
-- GPT-4o-mini ($0.15/1M input tokens, $0.60/1M output tokens)
+- [ ] Dispositivos reales (iPhone, Android)
+- [ ] Tablets
 
 ---
 
 ## Pruebas de Seguridad Pendientes
 
 - [ ] SQL Injection en filtros de API
-- [ ] XSS en campos de texto (nombre de cliente, reporte)
+- [ ] XSS en campos de texto
 - [ ] CSRF en formularios
 - [ ] Rate limiting en endpoints sensibles
-- [ ] Validación de tenant en todas las operaciones
-- [ ] Tokens de integración encriptados en DB
-- [ ] Contraseñas hasheadas con PBKDF2
+- [ ] Validacion de tenant en todas las operaciones
+- [ ] Tokens de integracion encriptados en DB
+- [ ] Passwords hasheadas con PBKDF2
 
 ---
 
 ## Pruebas de Performance Pendientes
 
-- [ ] Carga de lista de reportes (100+ reportes)
+- [ ] Carga de lista de dashboards (100+ dashboards)
 - [ ] Carga de lista de clientes (100+ clientes)
-- [ ] Tiempo de generación de PDF
-- [ ] Memoria usada por Puppeteer
+- [ ] Tiempo de generacion de PDF
+- [ ] Lighthouse score >90
+- [ ] Load time <3s
 
 ---
 
-## Cómo Ejecutar Tests (Futuro)
+## E2E Tests Pendientes
+
+- [ ] Flujo completo: crear cliente -> crear dashboard -> compartir
+- [ ] Flujo: conectar integracion -> sync metricas -> ver en dashboard
+- [ ] Flujo: crear dashboard con wizard -> editar -> publicar
+
+---
+
+## Checklist Pre-Produccion
+
+### Variables de Entorno
+- [ ] DATABASE_URL (PostgreSQL produccion)
+- [ ] JWT_SECRET (secreto fuerte)
+- [ ] ENCRYPTION_KEY (32 bytes)
+- [ ] ANTHROPIC_API_KEY (para AI)
+- [ ] GOOGLE_CLIENT_ID/SECRET (para integraciones)
+- [ ] FACEBOOK_APP_ID/SECRET (para integraciones)
+
+### Infraestructura
+- [ ] Base de datos PostgreSQL (Railway, Supabase, etc.)
+- [ ] Redis para cache/colas
+- [ ] Almacenamiento R2/S3 para logos y PDFs
+- [ ] Dominio y SSL configurados
+- [ ] OAuth redirect URIs actualizadas
+
+### Monitoreo
+- [ ] Logs configurados
+- [ ] Sentry o similar para errores
+- [ ] Backups de base de datos
+- [ ] Alertas de uso de AI (costos)
+
+---
+
+## Quick Test Commands
 
 ```bash
-# Unit tests
-pnpm test
+# Start dev environment
+docker-compose up -d && pnpm dev
 
-# Integration tests
-pnpm test:integration
+# Demo credentials
+Email: admin@demo.agency
+Password: demo123
+URL: http://localhost:3000/demo
 
-# E2E tests
-pnpm test:e2e
+# Check AI status
+curl http://localhost:3000/api/ai/status
 
-# Coverage
-pnpm test:coverage
+# Check PDF status
+curl http://localhost:3000/api/pdf/status
 ```
-
----
-
-## Checklist Pre-Producción
-
-- [ ] Todas las variables de entorno configuradas
-- [ ] Base de datos PostgreSQL en Railway/producción
-- [ ] Redis para colas (si aplica)
-- [ ] Almacenamiento S3/R2 configurado
-- [ ] Dominio y SSL configurados
-- [ ] OAuth redirect URIs actualizadas a producción
-- [ ] Rate limiting habilitado
-- [ ] Logs configurados
-- [ ] Monitoreo de errores (Sentry, etc.)
-- [ ] Backups de base de datos
