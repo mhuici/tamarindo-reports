@@ -1,0 +1,39 @@
+# ===========================================
+# Railway Configuration for TamarindoReports
+# ===========================================
+
+[build]
+# Use Dockerfile for build
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+# Number of replicas
+numReplicas = 1
+
+# Start command (optional, Dockerfile CMD is used)
+# startCommand = "node .output/server/index.mjs"
+
+# Health check configuration
+healthcheckPath = "/api/health"
+healthcheckTimeout = 30
+
+# Restart policy
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+# Sleep when inactive (disable for production)
+# sleepApplication = false
+
+[deploy.resources]
+# Memory limit (in MB) - Puppeteer needs at least 2GB
+# Note: Adjust based on your Railway plan
+# memoryLimit = 2048
+
+[env]
+# Default environment variables
+NODE_ENV = "production"
+HOST = "0.0.0.0"
+PORT = "3000"
+PUPPETEER_SKIP_CHROMIUM_DOWNLOAD = "true"
+PUPPETEER_EXECUTABLE_PATH = "/usr/bin/chromium-browser"

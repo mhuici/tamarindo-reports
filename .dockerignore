@@ -1,0 +1,55 @@
+# Git
+.git
+.gitignore
+
+# Dependencies (will be reinstalled in container)
+node_modules
+.pnpm-store
+
+# Build outputs
+.output
+.nuxt
+dist
+
+# Development
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+.DS_Store
+
+# Documentation (not needed in container)
+docs/
+*.md
+!README.md
+
+# Testing
+coverage
+.nyc_output
+playwright-report
+test-results
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# CI/CD
+.github
+.gitlab-ci.yml
+
+# Claude
+.claude
+
+# Generated PDFs (local only)
+apps/web/public/pdfs
+
+# Misc
+*.local
+.cache
+.turbo
