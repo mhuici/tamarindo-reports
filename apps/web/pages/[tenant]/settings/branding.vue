@@ -31,6 +31,13 @@ const isSaving = ref(false)
 const saveSuccess = ref(false)
 const saveError = ref('')
 
+// Logo upload state
+const fileInput = ref<HTMLInputElement | null>(null)
+const isDragging = ref(false)
+const isUploading = ref(false)
+const uploadError = ref('')
+const showManualUrl = ref(false)
+
 // Predefined color palettes
 const colorPalettes = [
   { name: 'Tamarindo', primary: '#f97316', secondary: '#1f2937' },
@@ -71,6 +78,79 @@ onMounted(async () => {
 function applyPalette(palette: typeof colorPalettes[0]) {
   branding.primaryColor = palette.primary
   branding.secondaryColor = palette.secondary
+}
+
+// Logo upload handlers
+function handleDragOver(e: DragEvent) {
+  e.preventDefault()
+  isDragging.value = true
+}
+
+function handleDragLeave() {
+  isDragging.value = false
+}
+
+async function handleDrop(e: DragEvent) {
+  e.preventDefault()
+  isDragging.value = false
+
+  const file = e.dataTransfer?.files[0]
+  if (file) {
+    await uploadLogo(file)
+  }
+}
+
+function handleFileSelect(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (file) {
+    uploadLogo(file)
+  }
+  // Reset input so same file can be selected again
+  input.value = ''
+}
+
+async function uploadLogo(file: File) {
+  // Client-side validation
+  const maxSize = 2 * 1024 * 1024 // 2MB
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/svg+xml']
+
+  if (file.size > maxSize) {
+    uploadError.value = 'El archivo es muy grande. Máximo 2MB.'
+    return
+  }
+
+  if (!allowedTypes.includes(file.type)) {
+    uploadError.value = 'Tipo de archivo no válido. Usa PNG, JPG, WebP o SVG.'
+    return
+  }
+
+  uploadError.value = ''
+  isUploading.value = true
+
+  try {
+    const formData = new FormData()
+    formData.append('logo', file)
+
+    const response = await $fetch<{ success: boolean, url: string }>('/api/tenants/logo', {
+      method: 'POST',
+      body: formData,
+    })
+
+    if (response.success && response.url) {
+      branding.logoUrl = response.url
+    }
+  }
+  catch (e: any) {
+    uploadError.value = e?.data?.message || 'Error al subir el logo'
+  }
+  finally {
+    isUploading.value = false
+  }
+}
+
+function removeLogo() {
+  branding.logoUrl = ''
 }
 
 async function handleSave() {
@@ -224,40 +304,124 @@ const previewStyles = computed(() => ({
               </h2>
             </div>
             <div class="card-body space-y-4">
-              <div>
-                <label
-                  for="logoUrl"
-                  class="label"
-                >Logo URL</label>
-                <input
-                  id="logoUrl"
-                  v-model="branding.logoUrl"
-                  type="url"
-                  class="input"
-                  placeholder="https://example.com/logo.png"
-                >
-                <p class="mt-1 text-xs text-gray-500">
-                  Enter a URL to your logo image. Recommended size: 200x50px
-                </p>
-              </div>
-
-              <!-- Logo preview -->
+              <!-- Upload error -->
               <div
-                v-if="branding.logoUrl"
-                class="p-4 bg-gray-50 rounded-lg"
+                v-if="uploadError"
+                class="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
               >
-                <p class="text-xs text-gray-500 mb-2">
-                  Preview:
-                </p>
-                <img
-                  :src="branding.logoUrl"
-                  alt="Logo preview"
-                  class="max-h-12 object-contain"
-                  @error="branding.logoUrl = ''"
-                >
+                {{ uploadError }}
               </div>
 
+              <!-- File upload zone -->
+              <div
+                class="border-2 border-dashed rounded-lg p-6 text-center transition-colors"
+                :class="[
+                  isDragging ? 'border-orange-500 bg-orange-50' : 'border-gray-300 hover:border-gray-400',
+                  isUploading ? 'opacity-50 pointer-events-none' : '',
+                ]"
+                @dragover="handleDragOver"
+                @dragleave="handleDragLeave"
+                @drop="handleDrop"
+              >
+                <input
+                  ref="fileInput"
+                  type="file"
+                  class="hidden"
+                  accept="image/png,image/jpeg,image/jpg,image/webp,image/svg+xml"
+                  @change="handleFileSelect"
+                >
+
+                <!-- Current logo preview -->
+                <div
+                  v-if="branding.logoUrl"
+                  class="mb-4"
+                >
+                  <img
+                    :src="branding.logoUrl"
+                    alt="Logo actual"
+                    class="max-h-16 mx-auto object-contain"
+                    @error="branding.logoUrl = ''"
+                  >
+                </div>
+
+                <!-- Upload icon -->
+                <div
+                  v-else
+                  class="mb-4"
+                >
+                  <Icon
+                    name="heroicons:photo"
+                    class="w-12 h-12 mx-auto text-gray-400"
+                  />
+                </div>
+
+                <!-- Upload button -->
+                <div class="flex items-center justify-center gap-3">
+                  <button
+                    type="button"
+                    class="btn-secondary"
+                    :disabled="isUploading"
+                    @click="fileInput?.click()"
+                  >
+                    <Icon
+                      v-if="isUploading"
+                      name="heroicons:arrow-path"
+                      class="w-4 h-4 mr-2 animate-spin"
+                    />
+                    {{ branding.logoUrl ? 'Cambiar Logo' : 'Subir Logo' }}
+                  </button>
+
+                  <button
+                    v-if="branding.logoUrl"
+                    type="button"
+                    class="btn-ghost text-red-600 hover:text-red-700"
+                    @click="removeLogo"
+                  >
+                    <Icon
+                      name="heroicons:trash"
+                      class="w-4 h-4"
+                    />
+                  </button>
+                </div>
+
+                <p class="text-sm text-gray-500 mt-3">
+                  Arrastra una imagen o haz clic para seleccionar
+                </p>
+                <p class="text-xs text-gray-400 mt-1">
+                  PNG, JPG, WebP o SVG. Máximo 2MB. Recomendado: 200x50px
+                </p>
+              </div>
+
+              <!-- Manual URL option -->
               <div>
+                <button
+                  type="button"
+                  class="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1"
+                  @click="showManualUrl = !showManualUrl"
+                >
+                  <Icon
+                    :name="showManualUrl ? 'heroicons:chevron-up' : 'heroicons:chevron-down'"
+                    class="w-4 h-4"
+                  />
+                  Usar URL externa
+                </button>
+
+                <div
+                  v-if="showManualUrl"
+                  class="mt-3"
+                >
+                  <input
+                    id="logoUrl"
+                    v-model="branding.logoUrl"
+                    type="url"
+                    class="input"
+                    placeholder="https://example.com/logo.png"
+                  >
+                </div>
+              </div>
+
+              <!-- Favicon -->
+              <div class="pt-4 border-t border-gray-100">
                 <label
                   for="favicon"
                   class="label"
