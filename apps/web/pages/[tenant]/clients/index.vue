@@ -13,6 +13,7 @@ const { clients, isLoading, fetchClients, createClient, updateClient, deleteClie
 // Fetch clients on mount
 onMounted(() => {
   fetchClients()
+  fetchPlatformAccounts()
 })
 
 const searchQuery = ref('')
@@ -20,6 +21,13 @@ const isModalOpen = ref(false)
 const editingClient = ref<any>(null)
 const isSubmitting = ref(false)
 const formError = ref('')
+
+// Account linking state
+const isAccountModalOpen = ref(false)
+const selectedClient = ref<any>(null)
+const platformAccounts = ref<any[]>([])
+const isLoadingAccounts = ref(false)
+const isLinkingAccount = ref(false)
 
 const form = reactive({
   name: '',
@@ -29,6 +37,90 @@ const form = reactive({
   industry: '',
   notes: '',
 })
+
+// Fetch all platform accounts
+async function fetchPlatformAccounts() {
+  try {
+    const response = await $fetch('/api/platform-accounts')
+    platformAccounts.value = response as any[]
+  }
+  catch (error) {
+    console.error('Failed to fetch platform accounts:', error)
+  }
+}
+
+// Get linked accounts for a client
+function getClientLinkedAccounts(clientId: string) {
+  return platformAccounts.value.filter(account =>
+    account.linkedClients.some((c: any) => c.id === clientId),
+  )
+}
+
+// Get available (not linked) accounts for a client
+function getAvailableAccounts(clientId: string) {
+  return platformAccounts.value.filter(account =>
+    !account.linkedClients.some((c: any) => c.id === clientId),
+  )
+}
+
+// Open account linking modal
+function openAccountModal(client: any) {
+  selectedClient.value = client
+  isAccountModalOpen.value = true
+}
+
+function closeAccountModal() {
+  isAccountModalOpen.value = false
+  selectedClient.value = null
+}
+
+// Link an account to the selected client
+async function linkAccount(accountId: string) {
+  if (!selectedClient.value) return
+
+  isLinkingAccount.value = true
+  try {
+    await $fetch(`/api/clients/${selectedClient.value.id}/accounts`, {
+      method: 'POST',
+      body: { platformAccountId: accountId },
+    })
+    // Refresh data
+    await fetchPlatformAccounts()
+  }
+  catch (error: any) {
+    alert(error.data?.message || 'Failed to link account')
+  }
+  finally {
+    isLinkingAccount.value = false
+  }
+}
+
+// Unlink an account from the selected client
+async function unlinkAccount(accountId: string) {
+  if (!selectedClient.value) return
+
+  if (!confirm('Are you sure you want to unlink this account?')) return
+
+  try {
+    await $fetch(`/api/clients/${selectedClient.value.id}/accounts/${accountId}`, {
+      method: 'DELETE',
+    })
+    // Refresh data
+    await fetchPlatformAccounts()
+  }
+  catch (error: any) {
+    alert(error.data?.message || 'Failed to unlink account')
+  }
+}
+
+// Get platform icon
+function getPlatformIcon(platform: string) {
+  const icons: Record<string, string> = {
+    FACEBOOK_ADS: 'logos:facebook',
+    GOOGLE_ADS: 'logos:google-ads',
+  }
+  return icons[platform] || 'heroicons:globe-alt'
+}
 
 const filteredClients = computed(() => {
   if (!searchQuery.value) return clients.value
@@ -190,7 +282,7 @@ function formatDate(dateString: string) {
               Client
             </th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Industry
+              Ad Accounts
             </th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Reports
@@ -229,8 +321,43 @@ function formatDate(dateString: string) {
                 </div>
               </div>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-              {{ client.industry || '-' }}
+            <td class="px-6 py-4 whitespace-nowrap">
+              <div class="flex items-center gap-2">
+                <div
+                  v-if="getClientLinkedAccounts(client.id).length > 0"
+                  class="flex -space-x-1"
+                >
+                  <div
+                    v-for="account in getClientLinkedAccounts(client.id).slice(0, 3)"
+                    :key="account.id"
+                    class="w-6 h-6 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center"
+                    :title="account.name"
+                  >
+                    <Icon
+                      :name="getPlatformIcon(account.platform)"
+                      class="w-3 h-3"
+                    />
+                  </div>
+                  <div
+                    v-if="getClientLinkedAccounts(client.id).length > 3"
+                    class="w-6 h-6 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600"
+                  >
+                    +{{ getClientLinkedAccounts(client.id).length - 3 }}
+                  </div>
+                </div>
+                <span
+                  v-else
+                  class="text-sm text-gray-400"
+                >
+                  No accounts
+                </span>
+                <button
+                  class="ml-1 text-tamarindo-600 hover:text-tamarindo-800 text-sm font-medium"
+                  @click="openAccountModal(client)"
+                >
+                  {{ getClientLinkedAccounts(client.id).length > 0 ? 'Manage' : 'Link' }}
+                </button>
+              </div>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
               {{ client._count?.reports || 0 }}
@@ -413,6 +540,145 @@ function formatDate(dateString: string) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Account Linking Modal -->
+    <Teleport to="body">
+      <div
+        v-if="isAccountModalOpen && selectedClient"
+        class="fixed inset-0 z-50 overflow-y-auto"
+      >
+        <!-- Backdrop -->
+        <div
+          class="fixed inset-0 bg-black/50 transition-opacity"
+          @click="closeAccountModal"
+        />
+
+        <!-- Modal content -->
+        <div class="flex min-h-full items-center justify-center p-4">
+          <div class="relative bg-white rounded-xl shadow-xl max-w-lg w-full p-6">
+            <h2 class="text-xl font-semibold text-gray-900 mb-2">
+              Manage Ad Accounts
+            </h2>
+            <p class="text-gray-500 text-sm mb-6">
+              Link advertising accounts to <strong>{{ selectedClient.name }}</strong>
+            </p>
+
+            <!-- Linked accounts -->
+            <div class="mb-6">
+              <h3 class="text-sm font-medium text-gray-700 mb-3">
+                Linked Accounts
+              </h3>
+              <div
+                v-if="getClientLinkedAccounts(selectedClient.id).length > 0"
+                class="space-y-2"
+              >
+                <div
+                  v-for="account in getClientLinkedAccounts(selectedClient.id)"
+                  :key="account.id"
+                  class="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg"
+                >
+                  <div class="flex items-center gap-3">
+                    <Icon
+                      :name="getPlatformIcon(account.platform)"
+                      class="w-5 h-5"
+                    />
+                    <div>
+                      <div class="font-medium text-gray-900">
+                        {{ account.name }}
+                      </div>
+                      <div class="text-xs text-gray-500">
+                        {{ account.platformId }} · {{ account.currency }}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    class="text-red-600 hover:text-red-800 text-sm font-medium"
+                    @click="unlinkAccount(account.id)"
+                  >
+                    Unlink
+                  </button>
+                </div>
+              </div>
+              <p
+                v-else
+                class="text-gray-400 text-sm italic"
+              >
+                No accounts linked yet
+              </p>
+            </div>
+
+            <!-- Available accounts -->
+            <div>
+              <h3 class="text-sm font-medium text-gray-700 mb-3">
+                Available Accounts
+              </h3>
+              <div
+                v-if="getAvailableAccounts(selectedClient.id).length > 0"
+                class="space-y-2"
+              >
+                <div
+                  v-for="account in getAvailableAccounts(selectedClient.id)"
+                  :key="account.id"
+                  class="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg"
+                >
+                  <div class="flex items-center gap-3">
+                    <Icon
+                      :name="getPlatformIcon(account.platform)"
+                      class="w-5 h-5"
+                    />
+                    <div>
+                      <div class="font-medium text-gray-900">
+                        {{ account.name }}
+                      </div>
+                      <div class="text-xs text-gray-500">
+                        {{ account.platformId }} · {{ account.currency }}
+                        <span
+                          v-if="account.linkedClients.length > 0"
+                          class="text-amber-600"
+                        >
+                          · Used by {{ account.linkedClients.map((c: any) => c.name).join(', ') }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    class="text-tamarindo-600 hover:text-tamarindo-800 text-sm font-medium"
+                    :disabled="isLinkingAccount"
+                    @click="linkAccount(account.id)"
+                  >
+                    {{ isLinkingAccount ? 'Linking...' : 'Link' }}
+                  </button>
+                </div>
+              </div>
+              <div
+                v-else
+                class="text-center py-6 bg-gray-50 rounded-lg"
+              >
+                <Icon
+                  name="heroicons:link-slash"
+                  class="w-8 h-8 text-gray-300 mx-auto mb-2"
+                />
+                <p class="text-gray-500 text-sm">
+                  No accounts available
+                </p>
+                <p class="text-gray-400 text-xs mt-1">
+                  Connect an ad platform in Integrations first
+                </p>
+              </div>
+            </div>
+
+            <div class="flex justify-end mt-6">
+              <button
+                class="btn-outline"
+                @click="closeAccountModal"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       </div>

@@ -3,6 +3,7 @@ import { prisma, encrypt } from '../../../utils/db'
 
 const FACEBOOK_TOKEN_URL = 'https://graph.facebook.com/v18.0/oauth/access_token'
 const FACEBOOK_ME_URL = 'https://graph.facebook.com/v18.0/me'
+const FACEBOOK_AD_ACCOUNTS_URL = 'https://graph.facebook.com/v18.0/me/adaccounts'
 
 /**
  * GET /api/integrations/facebook-ads/callback
@@ -98,6 +99,8 @@ export default defineEventHandler(async (event) => {
     userId: fbUserInfo.id,
   }))
 
+  let dataSourceId: string
+
   if (existingDataSource) {
     // Update existing data source
     await prisma.dataSource.update({
@@ -109,10 +112,11 @@ export default defineEventHandler(async (event) => {
         isActive: true,
       },
     })
+    dataSourceId = existingDataSource.id
   }
   else {
     // Create new data source
-    await prisma.dataSource.create({
+    const newDataSource = await prisma.dataSource.create({
       data: {
         name: fbUserInfo.name || fbUserInfo.email || 'Facebook Ads',
         type: 'FACEBOOK_ADS',
@@ -121,6 +125,62 @@ export default defineEventHandler(async (event) => {
         isActive: true,
       },
     })
+    dataSourceId = newDataSource.id
+  }
+
+  // Fetch Ad Accounts from Facebook and create PlatformAccounts
+  try {
+    const adAccountsResponse = await fetch(
+      `${FACEBOOK_AD_ACCOUNTS_URL}?fields=id,name,currency,timezone_name&access_token=${tokenData.access_token}`,
+    )
+
+    if (adAccountsResponse.ok) {
+      const adAccountsData = await adAccountsResponse.json()
+      const adAccounts = adAccountsData.data || []
+
+      console.log(`[Facebook] Found ${adAccounts.length} ad accounts`)
+
+      for (const account of adAccounts) {
+        // Check if PlatformAccount already exists
+        const existingAccount = await prisma.platformAccount.findFirst({
+          where: {
+            dataSourceId,
+            platformId: account.id,
+          },
+        })
+
+        if (existingAccount) {
+          // Update existing account
+          await prisma.platformAccount.update({
+            where: { id: existingAccount.id },
+            data: {
+              name: account.name || `Account ${account.id}`,
+              currency: account.currency || 'USD',
+              timezone: account.timezone_name || 'UTC',
+            },
+          })
+        }
+        else {
+          // Create new PlatformAccount
+          await prisma.platformAccount.create({
+            data: {
+              dataSourceId,
+              platformId: account.id,
+              name: account.name || `Account ${account.id}`,
+              currency: account.currency || 'USD',
+              timezone: account.timezone_name || 'UTC',
+            },
+          })
+        }
+      }
+    }
+    else {
+      console.error('[Facebook] Failed to fetch ad accounts:', await adAccountsResponse.text())
+    }
+  }
+  catch (error) {
+    console.error('[Facebook] Error fetching ad accounts:', error)
+    // Don't fail the whole flow, just log the error
   }
 
   // Redirect back to integrations page with success
