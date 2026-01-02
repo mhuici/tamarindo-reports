@@ -24,8 +24,11 @@ const GOOGLE_ADS_DEVELOPER_TOKEN = process.env.GOOGLE_ADS_DEVELOPER_TOKEN || ''
 const FACEBOOK_APP_ID = process.env.FACEBOOK_APP_ID || ''
 const FACEBOOK_APP_SECRET = process.env.FACEBOOK_APP_SECRET || ''
 
+// Force demo data even with real credentials (for testing)
+const FORCE_DEMO_DATA = process.env.ENABLE_DEMO_DATA === 'true'
+
 // Check if real credentials are configured
-const USE_MOCK_DATA = !GOOGLE_CLIENT_ID && !FACEBOOK_APP_ID
+const USE_MOCK_DATA = FORCE_DEMO_DATA || (!GOOGLE_CLIENT_ID && !FACEBOOK_APP_ID)
 
 // Cache TTL: 1 hour for current day data
 const CACHE_TTL_MS = 60 * 60 * 1000
