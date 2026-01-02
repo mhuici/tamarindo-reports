@@ -44,15 +44,54 @@ const widgetTypes = [
   { type: 'text', label: 'Text Block', icon: 'heroicons:document-text', description: 'Custom text/notes' },
 ]
 
+// Available metrics for widgets
+const availableMetrics = [
+  { value: 'impressions', label: 'Impressions', format: 'number', category: 'Traffic' },
+  { value: 'clicks', label: 'Clicks', format: 'number', category: 'Traffic' },
+  { value: 'reach', label: 'Reach', format: 'number', category: 'Traffic' },
+  { value: 'spend', label: 'Ad Spend', format: 'currency', category: 'Cost' },
+  { value: 'cpc', label: 'Cost per Click (CPC)', format: 'currency', category: 'Cost' },
+  { value: 'cpm', label: 'Cost per 1000 (CPM)', format: 'currency', category: 'Cost' },
+  { value: 'ctr', label: 'Click-through Rate (CTR)', format: 'percent', category: 'Performance' },
+  { value: 'conversions', label: 'Conversions', format: 'number', category: 'Conversions' },
+  { value: 'conversionValue', label: 'Conversion Value', format: 'currency', category: 'Conversions' },
+  { value: 'conversionRate', label: 'Conversion Rate', format: 'percent', category: 'Conversions' },
+  { value: 'costPerConversion', label: 'Cost per Conversion', format: 'currency', category: 'Conversions' },
+  { value: 'roas', label: 'Return on Ad Spend (ROAS)', format: 'percent', category: 'Conversions' },
+]
+
+// Track which widget is being configured
+const configuringWidgetId = ref<string | null>(null)
+
+function toggleWidgetConfig(widgetId: string) {
+  if (configuringWidgetId.value === widgetId) {
+    configuringWidgetId.value = null
+  }
+  else {
+    configuringWidgetId.value = widgetId
+  }
+}
+
+function getMetricLabel(metricValue: string) {
+  return availableMetrics.find(m => m.value === metricValue)?.label || metricValue
+}
+
 function addWidget(type: string) {
   const widgetType = widgetTypes.find(w => w.type === type)
-  widgets.value.push({
+  const newWidget = {
     id: crypto.randomUUID(),
     type,
     title: widgetType?.label || 'Widget',
-    config: {},
+    config: {
+      metric: type === 'table' ? ['impressions', 'clicks', 'spend', 'ctr'] : 'impressions',
+      showComparison: true,
+      color: '#f97316', // tamarindo orange
+    },
     size: 'medium', // small, medium, large
-  })
+  }
+  widgets.value.push(newWidget)
+  // Auto-open config for new widget
+  configuringWidgetId.value = newWidget.id
 }
 
 function removeWidget(id: string) {
@@ -519,36 +558,204 @@ function getWidgetIcon(type: string) {
                   </div>
                 </div>
 
-                <!-- Widget preview placeholder -->
-                <div class="mt-4 bg-gray-50 rounded-lg p-8 text-center">
+                <!-- Widget config toggle button -->
+                <button
+                  class="mt-3 w-full py-2 px-3 text-sm text-left rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between"
+                  @click="toggleWidgetConfig(widget.id)"
+                >
+                  <span class="flex items-center gap-2">
+                    <Icon
+                      name="heroicons:cog-6-tooth"
+                      class="w-4 h-4 text-gray-500"
+                    />
+                    <span class="text-gray-700">Configure Widget</span>
+                    <span
+                      v-if="widget.config?.metric"
+                      class="text-xs text-gray-500"
+                    >
+                      ({{ Array.isArray(widget.config.metric) ? widget.config.metric.length + ' metrics' : getMetricLabel(widget.config.metric) }})
+                    </span>
+                  </span>
                   <Icon
-                    :name="getWidgetIcon(widget.type)"
-                    class="mx-auto h-8 w-8 text-gray-300"
+                    :name="configuringWidgetId === widget.id ? 'heroicons:chevron-up' : 'heroicons:chevron-down'"
+                    class="w-4 h-4 text-gray-400"
                   />
-                  <p class="mt-2 text-sm text-gray-400">
-                    Widget preview will appear here
-                  </p>
-                  <p class="text-xs text-gray-400">
-                    (Configure data source to see real data)
-                  </p>
+                </button>
+
+                <!-- Configuration panel -->
+                <div
+                  v-if="configuringWidgetId === widget.id"
+                  class="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-4"
+                >
+                  <!-- Metric selector for single metric widgets -->
+                  <div v-if="widget.type !== 'table' && widget.type !== 'text'">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      Select Metric
+                    </label>
+                    <select
+                      v-model="widget.config.metric"
+                      class="input"
+                    >
+                      <optgroup
+                        v-for="category in ['Traffic', 'Cost', 'Performance', 'Conversions']"
+                        :key="category"
+                        :label="category"
+                      >
+                        <option
+                          v-for="metric in availableMetrics.filter(m => m.category === category)"
+                          :key="metric.value"
+                          :value="metric.value"
+                        >
+                          {{ metric.label }}
+                        </option>
+                      </optgroup>
+                    </select>
+                  </div>
+
+                  <!-- Multiple metric selector for tables -->
+                  <div v-if="widget.type === 'table'">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      Select Columns
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                      <label
+                        v-for="metric in availableMetrics"
+                        :key="metric.value"
+                        class="flex items-center gap-2 p-2 rounded hover:bg-gray-100 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          :value="metric.value"
+                          :checked="widget.config.metric?.includes(metric.value)"
+                          class="rounded border-gray-300 text-tamarindo-600 focus:ring-tamarindo-500"
+                          @change="(e: Event) => {
+                            const target = e.target as HTMLInputElement
+                            if (!widget.config.metric) widget.config.metric = []
+                            if (target.checked) {
+                              widget.config.metric.push(metric.value)
+                            } else {
+                              widget.config.metric = widget.config.metric.filter((m: string) => m !== metric.value)
+                            }
+                          }"
+                        >
+                        <span class="text-sm text-gray-700">{{ metric.label }}</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Text content for text widgets -->
+                  <div v-if="widget.type === 'text'">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      Content
+                    </label>
+                    <textarea
+                      v-model="widget.config.content"
+                      class="input"
+                      rows="4"
+                      placeholder="Enter your text or notes here..."
+                    />
+                  </div>
+
+                  <!-- Show comparison toggle (for metric cards and charts) -->
+                  <div v-if="widget.type === 'metric' || widget.type === 'line-chart' || widget.type === 'bar-chart'">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <input
+                        v-model="widget.config.showComparison"
+                        type="checkbox"
+                        class="rounded border-gray-300 text-tamarindo-600 focus:ring-tamarindo-500"
+                      >
+                      <span class="text-sm text-gray-700">Show comparison with previous period</span>
+                    </label>
+                  </div>
+
+                  <!-- Color picker -->
+                  <div v-if="widget.type !== 'text' && widget.type !== 'table'">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      Color
+                    </label>
+                    <div class="flex gap-2">
+                      <button
+                        v-for="color in ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444', '#f59e0b']"
+                        :key="color"
+                        :class="[
+                          'w-8 h-8 rounded-full border-2 transition-all',
+                          widget.config.color === color ? 'border-gray-900 scale-110' : 'border-transparent hover:scale-105',
+                        ]"
+                        :style="{ backgroundColor: color }"
+                        @click="widget.config.color = color"
+                      />
+                    </div>
+                  </div>
+
+                  <!-- Size selector -->
+                  <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                      Widget Size
+                    </label>
+                    <div class="flex gap-2">
+                      <button
+                        v-for="size in ['small', 'medium', 'large']"
+                        :key="size"
+                        :class="[
+                          'px-3 py-1.5 text-sm rounded-lg border transition-colors',
+                          widget.size === size
+                            ? 'bg-tamarindo-100 border-tamarindo-300 text-tamarindo-700'
+                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50',
+                        ]"
+                        @click="widget.size = size"
+                      >
+                        {{ size.charAt(0).toUpperCase() + size.slice(1) }}
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
-                <!-- Size selector -->
-                <div class="mt-4 flex items-center gap-2">
-                  <span class="text-xs text-gray-500">Size:</span>
-                  <button
-                    v-for="size in ['small', 'medium', 'large']"
-                    :key="size"
-                    :class="[
-                      'px-2 py-1 text-xs rounded',
-                      widget.size === size
-                        ? 'bg-tamarindo-100 text-tamarindo-700'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
-                    ]"
-                    @click="widget.size = size"
+                <!-- Widget preview -->
+                <div
+                  class="mt-4 rounded-lg p-6 text-center"
+                  :style="{ backgroundColor: (widget.config?.color || '#f97316') + '10' }"
+                >
+                  <div
+                    v-if="widget.type === 'metric'"
+                    class="text-center"
                   >
-                    {{ size }}
-                  </button>
+                    <p class="text-sm text-gray-500 mb-1">
+                      {{ getMetricLabel(widget.config?.metric || 'impressions') }}
+                    </p>
+                    <p
+                      class="text-3xl font-bold"
+                      :style="{ color: widget.config?.color || '#f97316' }"
+                    >
+                      --
+                    </p>
+                    <p
+                      v-if="widget.config?.showComparison"
+                      class="text-xs text-gray-400 mt-1"
+                    >
+                      vs previous period
+                    </p>
+                  </div>
+                  <div
+                    v-else-if="widget.type === 'text'"
+                    class="text-left"
+                  >
+                    <p class="text-gray-700 whitespace-pre-wrap">
+                      {{ widget.config?.content || 'Your text will appear here...' }}
+                    </p>
+                  </div>
+                  <div v-else>
+                    <Icon
+                      :name="getWidgetIcon(widget.type)"
+                      class="mx-auto h-10 w-10"
+                      :style="{ color: widget.config?.color || '#f97316' }"
+                    />
+                    <p class="mt-2 text-sm font-medium text-gray-700">
+                      {{ getMetricLabel(widget.config?.metric || 'impressions') }}
+                    </p>
+                    <p class="text-xs text-gray-400 mt-1">
+                      {{ widget.type === 'table' ? 'Data table preview' : 'Chart preview' }}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
