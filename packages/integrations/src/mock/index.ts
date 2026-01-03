@@ -109,6 +109,119 @@ export class MockFacebookAdsConnector implements DataConnector {
   }
 }
 
+/**
+ * Mock Google Analytics Connector
+ * Returns realistic demo analytics data without requiring API credentials
+ */
+export class MockGoogleAnalyticsConnector implements DataConnector {
+  readonly id = 'google-analytics'
+  readonly displayName = 'Google Analytics 4 (Demo)'
+  readonly icon = 'logos:google-analytics'
+
+  async getAuthUrl(_tenantId: string, redirectUri: string): Promise<string> {
+    return `${redirectUri}?code=mock_ga4_code&state=${_tenantId}`
+  }
+
+  async handleCallback(_code: string, _redirectUri: string): Promise<OAuthTokens> {
+    return {
+      accessToken: 'mock_ga4_access_token',
+      refreshToken: 'mock_ga4_refresh_token',
+      expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year
+      scope: 'https://www.googleapis.com/auth/analytics.readonly',
+    }
+  }
+
+  async refreshTokens(_refreshToken: string): Promise<OAuthTokens> {
+    return {
+      accessToken: 'mock_ga4_access_token_refreshed',
+      refreshToken: 'mock_ga4_refresh_token',
+      expiresAt: Date.now() + 365 * 24 * 60 * 60 * 1000,
+    }
+  }
+
+  async getAccounts(_accessToken: string): Promise<Account[]> {
+    await new Promise(resolve => setTimeout(resolve, 500))
+    // Return mock GA4 properties
+    return [
+      {
+        id: '123456789',
+        name: 'Main Website - GA4',
+        currency: 'USD',
+        timezone: 'America/New_York',
+      },
+      {
+        id: '987654321',
+        name: 'E-commerce Store - GA4',
+        currency: 'USD',
+        timezone: 'America/Los_Angeles',
+      },
+    ]
+  }
+
+  async getMetrics(
+    _accessToken: string,
+    accountId: string,
+    dateRange: DateRange,
+    _metrics: string[],
+  ): Promise<NormalizedMetrics> {
+    await new Promise(resolve => setTimeout(resolve, 800))
+
+    // Generate mock GA4 analytics data
+    const startDate = new Date(dateRange.start)
+    const endDate = new Date(dateRange.end)
+    const days = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+
+    const data = []
+    for (let i = 0; i < days; i++) {
+      const date = new Date(startDate)
+      date.setDate(date.getDate() + i)
+      const dateStr = date.toISOString().split('T')[0]
+
+      // Generate realistic analytics data with some variance
+      const baseMultiplier = accountId.includes('ecommerce') ? 1.5 : 1
+      const dayOfWeek = date.getDay()
+      const weekendFactor = (dayOfWeek === 0 || dayOfWeek === 6) ? 0.7 : 1
+
+      const sessions = Math.round((1500 + Math.random() * 500) * baseMultiplier * weekendFactor)
+      const users = Math.round(sessions * (0.7 + Math.random() * 0.1))
+      const newUsers = Math.round(users * (0.3 + Math.random() * 0.2))
+      const pageviews = Math.round(sessions * (2.5 + Math.random() * 1))
+      const bounceRate = 0.4 + Math.random() * 0.2
+      const avgSessionDuration = 120 + Math.random() * 60
+      const transactions = Math.round(sessions * (0.02 + Math.random() * 0.01))
+      const revenue = transactions * (50 + Math.random() * 100)
+
+      data.push({
+        date: dateStr,
+        metrics: {
+          sessions,
+          users,
+          newUsers,
+          pageviews,
+          bounceRate: Math.round(bounceRate * 100) / 100,
+          avgSessionDuration: Math.round(avgSessionDuration),
+          transactions,
+          revenue: Math.round(revenue * 100) / 100,
+          // Map to canonical format
+          impressions: sessions,
+          clicks: newUsers,
+          conversions: transactions,
+          conversionValue: Math.round(revenue * 100) / 100,
+          cost: 0, // GA4 is free
+          spend: 0,
+        },
+      })
+    }
+
+    return {
+      source: 'ga4',
+      accountId,
+      dateRange,
+      data,
+    }
+  }
+}
+
 // Factory functions
 export function createMockGoogleAdsConnector(): MockGoogleAdsConnector {
   return new MockGoogleAdsConnector()
@@ -116,4 +229,8 @@ export function createMockGoogleAdsConnector(): MockGoogleAdsConnector {
 
 export function createMockFacebookAdsConnector(): MockFacebookAdsConnector {
   return new MockFacebookAdsConnector()
+}
+
+export function createMockGoogleAnalyticsConnector(): MockGoogleAnalyticsConnector {
+  return new MockGoogleAnalyticsConnector()
 }

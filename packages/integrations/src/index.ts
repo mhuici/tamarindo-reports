@@ -13,7 +13,7 @@ export type {
 
 // Re-export mock utilities
 export { shouldUseMockData, getMockDataMessage, generateMockMetrics, generateMockAccounts } from './mock/data-generator'
-export { createMockGoogleAdsConnector, createMockFacebookAdsConnector } from './mock'
+export { createMockGoogleAdsConnector, createMockFacebookAdsConnector, createMockGoogleAnalyticsConnector } from './mock'
 
 // Re-export adapters
 export {
@@ -24,9 +24,11 @@ export {
   GoogleAdsAdapter,
   FacebookAdsAdapter,
   TikTokAdsAdapter,
+  GoogleAnalyticsAdapter,
   createGoogleAdsAdapter,
   createFacebookAdsAdapter,
   createTikTokAdsAdapter,
+  createGoogleAnalyticsAdapter,
 } from './adapters'
 export type { PlatformAdapter, RawApiResponse, AccountMetadata } from './adapters'
 
@@ -45,10 +47,14 @@ export function getAllConnectors(): DataConnector[] {
   return Array.from(connectors.values())
 }
 
+// Export connectors
+export { createGoogleAnalyticsConnector } from './google-analytics'
+
 // Available connector IDs
 export const CONNECTOR_IDS = {
   GOOGLE_ADS: 'google-ads',
   FACEBOOK_ADS: 'facebook-ads',
+  GOOGLE_ANALYTICS: 'google-analytics',
 } as const
 
 export type ConnectorId = typeof CONNECTOR_IDS[keyof typeof CONNECTOR_IDS]

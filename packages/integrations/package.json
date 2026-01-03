@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./google-ads": "./src/google-ads/index.ts",
-    "./facebook-ads": "./src/facebook-ads/index.ts"
+    "./facebook-ads": "./src/facebook-ads/index.ts",
+    "./google-analytics": "./src/google-analytics/index.ts"
   },
   "scripts": {
     "test": "vitest run",

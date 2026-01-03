@@ -9,11 +9,13 @@ import type { PlatformAdapter } from './types'
 import { GoogleAdsAdapter } from './google-ads.adapter'
 import { FacebookAdsAdapter } from './facebook-ads.adapter'
 import { TikTokAdsAdapter } from './tiktok-ads.adapter'
+import { GoogleAnalyticsAdapter } from './google-analytics.adapter'
 
 // Instancias singleton de adaptadores
 const googleAdsAdapter = new GoogleAdsAdapter()
 const facebookAdsAdapter = new FacebookAdsAdapter()
 const tiktokAdsAdapter = new TikTokAdsAdapter()
+const googleAnalyticsAdapter = new GoogleAnalyticsAdapter()
 
 /**
  * Registry de adaptadores indexado por source
@@ -24,11 +26,13 @@ const adapters: Record<string, PlatformAdapter> = {
   google_ads: googleAdsAdapter,
   facebook_ads: facebookAdsAdapter,
   tiktok_ads: tiktokAdsAdapter,
+  google_analytics: googleAnalyticsAdapter,
 
   // Formato de DB (UPPER_SNAKE_CASE)
   GOOGLE_ADS: googleAdsAdapter,
   FACEBOOK_ADS: facebookAdsAdapter,
   TIKTOK_ADS: tiktokAdsAdapter,
+  GOOGLE_ANALYTICS: googleAnalyticsAdapter,
 }
 
 /**
@@ -56,7 +60,7 @@ export function hasAdapter(source: string): boolean {
  * Lista de todas las plataformas soportadas
  */
 export function getSupportedSources(): MetricSource[] {
-  return ['google_ads', 'facebook_ads', 'tiktok_ads']
+  return ['google_ads', 'facebook_ads', 'tiktok_ads', 'google_analytics']
 }
 
 /**
@@ -73,3 +77,4 @@ export * from './types'
 export { GoogleAdsAdapter, createGoogleAdsAdapter } from './google-ads.adapter'
 export { FacebookAdsAdapter, createFacebookAdsAdapter } from './facebook-ads.adapter'
 export { TikTokAdsAdapter, createTikTokAdsAdapter } from './tiktok-ads.adapter'
+export { GoogleAnalyticsAdapter, createGoogleAnalyticsAdapter } from './google-analytics.adapter'

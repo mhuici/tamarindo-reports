@@ -50,7 +50,7 @@ export function useIntegrations() {
       description: 'Pull website traffic and conversion data from GA4.',
       icon: 'logos:google-analytics',
       type: 'GOOGLE_ANALYTICS',
-      connectUrl: '',
+      connectUrl: '/api/integrations/google-analytics/connect',
     },
     {
       id: 'tiktok-ads',

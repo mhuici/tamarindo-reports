@@ -11,6 +11,7 @@
 export type MetricSource =
   | 'google_ads'
   | 'facebook_ads'
+  | 'google_analytics'
   | 'tiktok_ads'
   | 'linkedin_ads'
 
