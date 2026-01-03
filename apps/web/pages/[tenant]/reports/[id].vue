@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { formatMetricValue, getMetricFormat } from '~/composables/useWidgetPreview'
+
 definePageMeta({
   layout: 'dashboard',
   title: 'Report Editor',
@@ -11,15 +13,21 @@ const tenant = computed(() => route.params.tenant as string)
 const reportId = computed(() => route.params.id as string)
 
 const { currentReport, isLoading, fetchReport, updateReport } = useReports()
+const { fetchPreviewData, isLoading: isPreviewLoading } = useWidgetPreview(reportId.value)
 
 // Widget state
 const widgets = ref<any[]>([])
 const isSaving = ref(false)
 const saveMessage = ref('')
 
-// AI Insights state
-const isGeneratingInsights = ref(false)
-const insightsError = ref('')
+// Drag and drop state
+const draggedWidgetType = ref<string | null>(null)
+const dragOverIndex = ref<number | null>(null)
+const isDraggingExisting = ref(false)
+const draggedWidgetIndex = ref<number | null>(null)
+
+// Preview data cache
+const widgetPreviews = ref<Record<string, any>>({})
 
 // PDF generation state
 const isGeneratingPDF = ref(false)
@@ -31,17 +39,38 @@ onMounted(async () => {
   const report = await fetchReport(reportId.value)
   if (report) {
     widgets.value = report.widgets || []
+    // Fetch preview data for all widgets
+    await loadAllWidgetPreviews()
   }
 })
 
+// Load preview data for all widgets
+async function loadAllWidgetPreviews() {
+  for (const widget of widgets.value) {
+    await loadWidgetPreview(widget)
+  }
+}
+
+// Load preview data for a single widget
+async function loadWidgetPreview(widget: any) {
+  if (widget.type === 'text') return
+
+  const metric = widget.config?.metric || 'impressions'
+  const data = await fetchPreviewData(widget.type, metric)
+
+  if (data) {
+    widgetPreviews.value[widget.id] = data
+  }
+}
+
 // Available widget types
 const widgetTypes = [
-  { type: 'metric', label: 'Metric Card', icon: 'heroicons:presentation-chart-bar', description: 'Single KPI value' },
-  { type: 'line-chart', label: 'Line Chart', icon: 'heroicons:chart-bar', description: 'Trend over time' },
-  { type: 'bar-chart', label: 'Bar Chart', icon: 'heroicons:chart-bar-square', description: 'Comparison data' },
-  { type: 'pie-chart', label: 'Pie Chart', icon: 'heroicons:chart-pie', description: 'Distribution data' },
-  { type: 'table', label: 'Data Table', icon: 'heroicons:table-cells', description: 'Detailed breakdown' },
-  { type: 'text', label: 'Text Block', icon: 'heroicons:document-text', description: 'Custom text/notes' },
+  { type: 'metric', label: 'Metric Card', icon: 'heroicons:presentation-chart-bar', description: 'Single KPI value', defaultSize: 'small' },
+  { type: 'line-chart', label: 'Line Chart', icon: 'heroicons:chart-bar', description: 'Trend over time', defaultSize: 'large' },
+  { type: 'bar-chart', label: 'Bar Chart', icon: 'heroicons:chart-bar-square', description: 'Comparison data', defaultSize: 'medium' },
+  { type: 'pie-chart', label: 'Pie Chart', icon: 'heroicons:chart-pie', description: 'Distribution data', defaultSize: 'medium' },
+  { type: 'table', label: 'Data Table', icon: 'heroicons:table-cells', description: 'Detailed breakdown', defaultSize: 'large' },
+  { type: 'text', label: 'Text Block', icon: 'heroicons:document-text', description: 'Custom text/notes', defaultSize: 'large' },
 ]
 
 // Available metrics for widgets
@@ -76,7 +105,89 @@ function getMetricLabel(metricValue: string) {
   return availableMetrics.find(m => m.value === metricValue)?.label || metricValue
 }
 
-function addWidget(type: string) {
+function getMetricFormatByValue(metricValue: string) {
+  return availableMetrics.find(m => m.value === metricValue)?.format || 'number'
+}
+
+// Grid size classes based on widget size
+function getWidgetGridClass(size: string) {
+  switch (size) {
+    case 'small': return 'col-span-1'
+    case 'medium': return 'col-span-2'
+    case 'large': return 'col-span-4'
+    default: return 'col-span-2'
+  }
+}
+
+// Drag and drop from palette
+function handlePaletteDragStart(event: DragEvent, type: string) {
+  draggedWidgetType.value = type
+  isDraggingExisting.value = false
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'copy'
+    event.dataTransfer.setData('text/plain', type)
+  }
+}
+
+// Drag existing widget to reorder
+function handleWidgetDragStart(event: DragEvent, index: number) {
+  draggedWidgetIndex.value = index
+  isDraggingExisting.value = true
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+  }
+}
+
+function handleDragOver(event: DragEvent, index: number) {
+  event.preventDefault()
+  dragOverIndex.value = index
+}
+
+function handleDragLeave() {
+  dragOverIndex.value = null
+}
+
+function handleDrop(event: DragEvent, index: number) {
+  event.preventDefault()
+
+  if (isDraggingExisting.value && draggedWidgetIndex.value !== null) {
+    // Reorder existing widget
+    const widget = widgets.value[draggedWidgetIndex.value]
+    widgets.value.splice(draggedWidgetIndex.value, 1)
+    widgets.value.splice(index, 0, widget)
+  }
+  else if (draggedWidgetType.value) {
+    // Add new widget at position
+    addWidgetAtIndex(draggedWidgetType.value, index)
+  }
+
+  // Reset drag state
+  draggedWidgetType.value = null
+  draggedWidgetIndex.value = null
+  dragOverIndex.value = null
+  isDraggingExisting.value = false
+}
+
+function handleCanvasDrop(event: DragEvent) {
+  event.preventDefault()
+
+  if (draggedWidgetType.value && !isDraggingExisting.value) {
+    // Add to end if dropped on canvas (not on specific position)
+    addWidget(draggedWidgetType.value)
+  }
+
+  draggedWidgetType.value = null
+  dragOverIndex.value = null
+}
+
+function handleDragEnd() {
+  draggedWidgetType.value = null
+  draggedWidgetIndex.value = null
+  dragOverIndex.value = null
+  isDraggingExisting.value = false
+}
+
+async function addWidget(type: string) {
   const widgetType = widgetTypes.find(w => w.type === type)
   const newWidget = {
     id: crypto.randomUUID(),
@@ -85,26 +196,49 @@ function addWidget(type: string) {
     config: {
       metric: type === 'table' ? ['impressions', 'clicks', 'spend', 'ctr'] : 'impressions',
       showComparison: true,
-      color: '#f97316', // tamarindo orange
+      color: '#f97316',
     },
-    size: 'medium', // small, medium, large
+    size: widgetType?.defaultSize || 'medium',
   }
   widgets.value.push(newWidget)
-  // Auto-open config for new widget
   configuringWidgetId.value = newWidget.id
+
+  // Load preview data for new widget
+  await loadWidgetPreview(newWidget)
+}
+
+async function addWidgetAtIndex(type: string, index: number) {
+  const widgetType = widgetTypes.find(w => w.type === type)
+  const newWidget = {
+    id: crypto.randomUUID(),
+    type,
+    title: widgetType?.label || 'Widget',
+    config: {
+      metric: type === 'table' ? ['impressions', 'clicks', 'spend', 'ctr'] : 'impressions',
+      showComparison: true,
+      color: '#f97316',
+    },
+    size: widgetType?.defaultSize || 'medium',
+  }
+  widgets.value.splice(index, 0, newWidget)
+  configuringWidgetId.value = newWidget.id
+
+  // Load preview data
+  await loadWidgetPreview(newWidget)
 }
 
 function removeWidget(id: string) {
   widgets.value = widgets.value.filter(w => w.id !== id)
+  delete widgetPreviews.value[id]
 }
 
-function moveWidget(index: number, direction: 'up' | 'down') {
-  const newIndex = direction === 'up' ? index - 1 : index + 1
-  if (newIndex < 0 || newIndex >= widgets.value.length) return
+async function updateWidgetMetric(widget: any, metric: string) {
+  widget.config.metric = metric
+  await loadWidgetPreview(widget)
+}
 
-  const temp = widgets.value[index]
-  widgets.value[index] = widgets.value[newIndex]
-  widgets.value[newIndex] = temp
+async function updateWidgetSize(widget: any, size: string) {
+  widget.size = size
 }
 
 async function saveReport() {
@@ -136,60 +270,6 @@ async function saveReport() {
   }
 }
 
-async function generateReport() {
-  isSaving.value = true
-
-  try {
-    const result = await updateReport(reportId.value, {
-      status: 'GENERATING',
-      widgets: widgets.value,
-    })
-
-    if (result.success) {
-      // In a real app, this would trigger a background job
-      // For now, we'll simulate completion
-      setTimeout(async () => {
-        await updateReport(reportId.value, { status: 'COMPLETED' })
-        await fetchReport(reportId.value)
-      }, 2000)
-    }
-  }
-  finally {
-    isSaving.value = false
-  }
-}
-
-async function generateAIInsights() {
-  if (isGeneratingInsights.value) return
-
-  isGeneratingInsights.value = true
-  insightsError.value = ''
-
-  try {
-    const response = await $fetch<{ success: boolean; insights: string; isMock: boolean; error?: string }>('/api/ai/insights', {
-      method: 'POST',
-      body: {
-        reportId: reportId.value,
-        useMock: false, // Will fallback to mock if no API key
-      },
-    })
-
-    if (response.success) {
-      // Refresh report to get updated insights
-      await fetchReport(reportId.value)
-    }
-    else {
-      insightsError.value = response.error || 'Failed to generate insights'
-    }
-  }
-  catch (e: any) {
-    insightsError.value = e?.data?.message || 'Failed to generate insights'
-  }
-  finally {
-    isGeneratingInsights.value = false
-  }
-}
-
 async function generatePDF() {
   if (isGeneratingPDF.value) return
 
@@ -206,18 +286,16 @@ async function generatePDF() {
     })
 
     if (response.success) {
-      pdfSuccess.value = 'PDF generado exitosamente'
-      // Refresh report to get updated PDF URL
+      pdfSuccess.value = 'PDF generated successfully'
       await fetchReport(reportId.value)
 
-      // Clear success message after 3 seconds
       setTimeout(() => {
         pdfSuccess.value = ''
       }, 3000)
     }
   }
   catch (e: any) {
-    pdfError.value = e?.data?.message || 'Error al generar PDF'
+    pdfError.value = e?.data?.message || 'Error generating PDF'
   }
   finally {
     isGeneratingPDF.value = false
@@ -250,6 +328,25 @@ function getStatusColor(status: string) {
 
 function getWidgetIcon(type: string) {
   return widgetTypes.find(w => w.type === type)?.icon || 'heroicons:square-3-stack-3d'
+}
+
+// Compute preview value for a widget
+function getPreviewValue(widget: any) {
+  const preview = widgetPreviews.value[widget.id]
+  if (!preview) return null
+  return preview.value
+}
+
+function getPreviewPreviousValue(widget: any) {
+  const preview = widgetPreviews.value[widget.id]
+  if (!preview) return null
+  return preview.previousValue
+}
+
+function getPreviewChartData(widget: any) {
+  const preview = widgetPreviews.value[widget.id]
+  if (!preview || !preview.data) return []
+  return preview.data
 }
 </script>
 
@@ -350,7 +447,6 @@ function getWidgetIcon(type: string) {
             Save Draft
           </button>
 
-          <!-- PDF buttons -->
           <button
             v-if="currentReport.pdfUrl"
             class="btn-secondary"
@@ -360,7 +456,7 @@ function getWidgetIcon(type: string) {
               name="heroicons:arrow-down-tray"
               class="w-4 h-4 mr-2"
             />
-            Descargar PDF
+            Download PDF
           </button>
 
           <button
@@ -378,7 +474,7 @@ function getWidgetIcon(type: string) {
               name="heroicons:document-arrow-down"
               class="w-4 h-4 mr-2"
             />
-            {{ currentReport.pdfUrl ? 'Regenerar PDF' : 'Generar PDF' }}
+            {{ currentReport.pdfUrl ? 'Regenerate PDF' : 'Generate PDF' }}
           </button>
         </div>
       </div>
@@ -427,33 +523,39 @@ function getWidgetIcon(type: string) {
                 target="_blank"
                 class="font-medium text-tamarindo-600 hover:underline"
               >
-                Ver PDF
+                View PDF
               </a>
             </div>
             <span
               v-else
               class="text-gray-400 text-sm"
             >
-              No generado
+              Not generated
             </span>
           </div>
         </div>
       </div>
 
       <!-- Main content area -->
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <!-- Widget palette (sidebar) -->
         <div class="lg:col-span-1">
           <div class="card card-body sticky top-4">
             <h3 class="font-semibold text-gray-900 mb-4">
               Add Widgets
             </h3>
+            <p class="text-xs text-gray-500 mb-3">
+              Drag widgets to the canvas or click to add
+            </p>
             <div class="space-y-2">
               <button
                 v-for="widget in widgetTypes"
                 :key="widget.type"
-                class="w-full p-3 text-left rounded-lg border border-gray-200 hover:border-tamarindo-300 hover:bg-tamarindo-50 transition-colors"
+                draggable="true"
+                class="w-full p-3 text-left rounded-lg border border-gray-200 hover:border-tamarindo-300 hover:bg-tamarindo-50 transition-colors cursor-grab active:cursor-grabbing"
                 @click="addWidget(widget.type)"
+                @dragstart="handlePaletteDragStart($event, widget.type)"
+                @dragend="handleDragEnd"
               >
                 <div class="flex items-center gap-3">
                   <Icon
@@ -474,12 +576,15 @@ function getWidgetIcon(type: string) {
           </div>
         </div>
 
-        <!-- Canvas area -->
-        <div class="lg:col-span-3">
+        <!-- Canvas area (Grid) -->
+        <div class="lg:col-span-4">
           <!-- Empty state -->
           <div
             v-if="widgets.length === 0"
-            class="card card-body border-dashed text-center py-16"
+            class="card card-body border-dashed border-2 text-center py-16"
+            @dragover.prevent="dragOverIndex = -1"
+            @dragleave="dragOverIndex = null"
+            @drop="handleCanvasDrop"
           >
             <Icon
               name="heroicons:squares-plus"
@@ -489,354 +594,339 @@ function getWidgetIcon(type: string) {
               No widgets yet
             </h3>
             <p class="mt-1 text-sm text-gray-500">
-              Click on a widget type from the sidebar to add it to your report.
+              Drag widgets from the sidebar or click to add them to your report.
             </p>
           </div>
 
-          <!-- Widgets list -->
+          <!-- Grid Canvas -->
           <div
             v-else
-            class="space-y-4"
+            class="bg-gray-100 rounded-xl p-4 min-h-[600px]"
+            @dragover.prevent
+            @drop="handleCanvasDrop"
           >
-            <div
-              v-for="(widget, index) in widgets"
-              :key="widget.id"
-              class="card hover:shadow-md transition-shadow"
-            >
-              <div class="card-body">
-                <div class="flex items-start justify-between">
-                  <div class="flex items-center gap-3">
-                    <Icon
-                      :name="getWidgetIcon(widget.type)"
-                      class="w-5 h-5 text-gray-500"
-                    />
-                    <div>
+            <div class="grid grid-cols-4 gap-4 auto-rows-min">
+              <template
+                v-for="(widget, index) in widgets"
+                :key="widget.id"
+              >
+                <!-- Drop zone indicator -->
+                <div
+                  v-if="dragOverIndex === index"
+                  class="col-span-4 h-2 bg-tamarindo-300 rounded-full transition-all"
+                />
+
+                <!-- Widget Card -->
+                <div
+                  :class="[
+                    'bg-white rounded-xl border-2 transition-all overflow-hidden',
+                    getWidgetGridClass(widget.size),
+                    configuringWidgetId === widget.id ? 'border-tamarindo-500 ring-2 ring-tamarindo-200' : 'border-gray-200 hover:border-gray-300',
+                    draggedWidgetIndex === index ? 'opacity-50' : '',
+                  ]"
+                  draggable="true"
+                  @dragstart="handleWidgetDragStart($event, index)"
+                  @dragover="handleDragOver($event, index)"
+                  @dragleave="handleDragLeave"
+                  @drop="handleDrop($event, index)"
+                  @dragend="handleDragEnd"
+                >
+                  <!-- Widget Header -->
+                  <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                    <div class="flex items-center gap-2 min-w-0">
+                      <Icon
+                        name="heroicons:bars-2"
+                        class="w-4 h-4 text-gray-400 cursor-grab"
+                      />
+                      <Icon
+                        :name="getWidgetIcon(widget.type)"
+                        class="w-4 h-4 text-gray-500"
+                      />
                       <input
                         v-model="widget.title"
                         type="text"
-                        class="font-medium text-gray-900 bg-transparent border-none focus:outline-none focus:ring-0 p-0"
+                        class="text-sm font-medium text-gray-900 bg-transparent border-none focus:outline-none focus:ring-0 p-0 min-w-0 flex-1"
                       >
-                      <p class="text-xs text-gray-500 capitalize">
-                        {{ widget.type.replace('-', ' ') }}
-                      </p>
+                    </div>
+
+                    <div class="flex items-center gap-1">
+                      <button
+                        class="p-1 rounded hover:bg-gray-200"
+                        title="Configure"
+                        @click="toggleWidgetConfig(widget.id)"
+                      >
+                        <Icon
+                          name="heroicons:cog-6-tooth"
+                          :class="['w-4 h-4', configuringWidgetId === widget.id ? 'text-tamarindo-600' : 'text-gray-400']"
+                        />
+                      </button>
+                      <button
+                        class="p-1 rounded hover:bg-red-100"
+                        title="Remove"
+                        @click="removeWidget(widget.id)"
+                      >
+                        <Icon
+                          name="heroicons:trash"
+                          class="w-4 h-4 text-gray-400 hover:text-red-600"
+                        />
+                      </button>
                     </div>
                   </div>
 
-                  <div class="flex items-center gap-1">
-                    <button
-                      class="p-1 text-gray-400 hover:text-gray-600"
-                      title="Move up"
-                      :disabled="index === 0"
-                      @click="moveWidget(index, 'up')"
-                    >
-                      <Icon
-                        name="heroicons:chevron-up"
-                        class="w-4 h-4"
-                      />
-                    </button>
-                    <button
-                      class="p-1 text-gray-400 hover:text-gray-600"
-                      title="Move down"
-                      :disabled="index === widgets.length - 1"
-                      @click="moveWidget(index, 'down')"
-                    >
-                      <Icon
-                        name="heroicons:chevron-down"
-                        class="w-4 h-4"
-                      />
-                    </button>
-                    <button
-                      class="p-1 text-gray-400 hover:text-red-600"
-                      title="Remove"
-                      @click="removeWidget(widget.id)"
-                    >
-                      <Icon
-                        name="heroicons:trash"
-                        class="w-4 h-4"
-                      />
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Widget config toggle button -->
-                <button
-                  class="mt-3 w-full py-2 px-3 text-sm text-left rounded-lg border border-gray-200 hover:bg-gray-50 flex items-center justify-between"
-                  @click="toggleWidgetConfig(widget.id)"
-                >
-                  <span class="flex items-center gap-2">
-                    <Icon
-                      name="heroicons:cog-6-tooth"
-                      class="w-4 h-4 text-gray-500"
-                    />
-                    <span class="text-gray-700">Configure Widget</span>
-                    <span
-                      v-if="widget.config?.metric"
-                      class="text-xs text-gray-500"
-                    >
-                      ({{ Array.isArray(widget.config.metric) ? widget.config.metric.length + ' metrics' : getMetricLabel(widget.config.metric) }})
-                    </span>
-                  </span>
-                  <Icon
-                    :name="configuringWidgetId === widget.id ? 'heroicons:chevron-up' : 'heroicons:chevron-down'"
-                    class="w-4 h-4 text-gray-400"
-                  />
-                </button>
-
-                <!-- Configuration panel -->
-                <div
-                  v-if="configuringWidgetId === widget.id"
-                  class="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-4"
-                >
-                  <!-- Metric selector for single metric widgets -->
-                  <div v-if="widget.type !== 'table' && widget.type !== 'text'">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                      Select Metric
-                    </label>
-                    <select
-                      v-model="widget.config.metric"
-                      class="input"
-                    >
-                      <optgroup
-                        v-for="category in ['Traffic', 'Cost', 'Performance', 'Conversions']"
-                        :key="category"
-                        :label="category"
+                  <!-- Configuration Panel (collapsible) -->
+                  <div
+                    v-if="configuringWidgetId === widget.id"
+                    class="px-4 py-3 bg-gray-50 border-b border-gray-200 space-y-3"
+                  >
+                    <!-- Metric selector -->
+                    <div v-if="widget.type !== 'table' && widget.type !== 'text'">
+                      <label class="block text-xs font-medium text-gray-600 mb-1">Metric</label>
+                      <select
+                        :value="widget.config.metric"
+                        class="input input-sm"
+                        @change="updateWidgetMetric(widget, ($event.target as HTMLSelectElement).value)"
                       >
-                        <option
-                          v-for="metric in availableMetrics.filter(m => m.category === category)"
-                          :key="metric.value"
-                          :value="metric.value"
+                        <optgroup
+                          v-for="category in ['Traffic', 'Cost', 'Performance', 'Conversions']"
+                          :key="category"
+                          :label="category"
                         >
-                          {{ metric.label }}
-                        </option>
-                      </optgroup>
-                    </select>
-                  </div>
+                          <option
+                            v-for="metric in availableMetrics.filter(m => m.category === category)"
+                            :key="metric.value"
+                            :value="metric.value"
+                          >
+                            {{ metric.label }}
+                          </option>
+                        </optgroup>
+                      </select>
+                    </div>
 
-                  <!-- Multiple metric selector for tables -->
-                  <div v-if="widget.type === 'table'">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                      Select Columns
-                    </label>
-                    <div class="grid grid-cols-2 gap-2">
-                      <label
-                        v-for="metric in availableMetrics"
-                        :key="metric.value"
-                        class="flex items-center gap-2 p-2 rounded hover:bg-gray-100 cursor-pointer"
-                      >
+                    <!-- Text content -->
+                    <div v-if="widget.type === 'text'">
+                      <label class="block text-xs font-medium text-gray-600 mb-1">Content</label>
+                      <textarea
+                        v-model="widget.config.content"
+                        class="input input-sm"
+                        rows="3"
+                        placeholder="Enter your text..."
+                      />
+                    </div>
+
+                    <!-- Size selector -->
+                    <div>
+                      <label class="block text-xs font-medium text-gray-600 mb-1">Size</label>
+                      <div class="flex gap-1">
+                        <button
+                          v-for="size in ['small', 'medium', 'large']"
+                          :key="size"
+                          :class="[
+                            'flex-1 px-2 py-1 text-xs rounded transition-colors',
+                            widget.size === size
+                              ? 'bg-tamarindo-500 text-white'
+                              : 'bg-gray-200 text-gray-600 hover:bg-gray-300',
+                          ]"
+                          @click="updateWidgetSize(widget, size)"
+                        >
+                          {{ size === 'small' ? '1 col' : size === 'medium' ? '2 col' : '4 col' }}
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- Color picker -->
+                    <div v-if="widget.type !== 'text' && widget.type !== 'table'">
+                      <label class="block text-xs font-medium text-gray-600 mb-1">Color</label>
+                      <div class="flex gap-1">
+                        <button
+                          v-for="color in ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444', '#f59e0b']"
+                          :key="color"
+                          :class="[
+                            'w-6 h-6 rounded-full border-2 transition-all',
+                            widget.config.color === color ? 'border-gray-900 scale-110' : 'border-transparent hover:scale-105',
+                          ]"
+                          :style="{ backgroundColor: color }"
+                          @click="widget.config.color = color"
+                        />
+                      </div>
+                    </div>
+
+                    <!-- Comparison toggle -->
+                    <div v-if="widget.type === 'metric'">
+                      <label class="flex items-center gap-2 cursor-pointer">
                         <input
+                          v-model="widget.config.showComparison"
                           type="checkbox"
-                          :value="metric.value"
-                          :checked="widget.config.metric?.includes(metric.value)"
-                          class="rounded border-gray-300 text-tamarindo-600 focus:ring-tamarindo-500"
-                          @change="(e: Event) => {
-                            const target = e.target as HTMLInputElement
-                            if (!widget.config.metric) widget.config.metric = []
-                            if (target.checked) {
-                              widget.config.metric.push(metric.value)
-                            } else {
-                              widget.config.metric = widget.config.metric.filter((m: string) => m !== metric.value)
-                            }
-                          }"
+                          class="rounded border-gray-300 text-tamarindo-600"
                         >
-                        <span class="text-sm text-gray-700">{{ metric.label }}</span>
+                        <span class="text-xs text-gray-600">Show comparison</span>
                       </label>
                     </div>
                   </div>
 
-                  <!-- Text content for text widgets -->
-                  <div v-if="widget.type === 'text'">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                      Content
-                    </label>
-                    <textarea
-                      v-model="widget.config.content"
-                      class="input"
-                      rows="4"
-                      placeholder="Enter your text or notes here..."
-                    />
-                  </div>
-
-                  <!-- Show comparison toggle (for metric cards and charts) -->
-                  <div v-if="widget.type === 'metric' || widget.type === 'line-chart' || widget.type === 'bar-chart'">
-                    <label class="flex items-center gap-2 cursor-pointer">
-                      <input
-                        v-model="widget.config.showComparison"
-                        type="checkbox"
-                        class="rounded border-gray-300 text-tamarindo-600 focus:ring-tamarindo-500"
+                  <!-- Widget Preview (with real data) -->
+                  <div class="p-4">
+                    <!-- Metric Card Preview -->
+                    <div
+                      v-if="widget.type === 'metric'"
+                      class="text-center py-4"
+                    >
+                      <p class="text-sm text-gray-500 mb-1">
+                        {{ getMetricLabel(widget.config?.metric || 'impressions') }}
+                      </p>
+                      <p
+                        v-if="isPreviewLoading && !widgetPreviews[widget.id]"
+                        class="text-3xl font-bold text-gray-300 animate-pulse"
                       >
-                      <span class="text-sm text-gray-700">Show comparison with previous period</span>
-                    </label>
-                  </div>
+                        Loading...
+                      </p>
+                      <p
+                        v-else
+                        class="text-3xl font-bold"
+                        :style="{ color: widget.config?.color || '#f97316' }"
+                      >
+                        {{ formatMetricValue(getPreviewValue(widget), getMetricFormatByValue(widget.config?.metric || 'impressions')) }}
+                      </p>
+                      <div
+                        v-if="widget.config?.showComparison && getPreviewPreviousValue(widget)"
+                        class="flex items-center justify-center gap-1 mt-2"
+                      >
+                        <Icon
+                          :name="(getPreviewValue(widget) || 0) >= (getPreviewPreviousValue(widget) || 0) ? 'heroicons:arrow-trending-up' : 'heroicons:arrow-trending-down'"
+                          :class="[
+                            'w-4 h-4',
+                            (getPreviewValue(widget) || 0) >= (getPreviewPreviousValue(widget) || 0) ? 'text-green-500' : 'text-red-500',
+                          ]"
+                        />
+                        <span
+                          :class="[
+                            'text-sm font-medium',
+                            (getPreviewValue(widget) || 0) >= (getPreviewPreviousValue(widget) || 0) ? 'text-green-600' : 'text-red-600',
+                          ]"
+                        >
+                          {{ Math.abs(Math.round(((getPreviewValue(widget) || 0) - (getPreviewPreviousValue(widget) || 1)) / (getPreviewPreviousValue(widget) || 1) * 100)) }}%
+                        </span>
+                        <span class="text-xs text-gray-400">vs prev</span>
+                      </div>
+                    </div>
 
-                  <!-- Color picker -->
-                  <div v-if="widget.type !== 'text' && widget.type !== 'table'">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                      Color
-                    </label>
-                    <div class="flex gap-2">
-                      <button
-                        v-for="color in ['#f97316', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444', '#f59e0b']"
-                        :key="color"
-                        :class="[
-                          'w-8 h-8 rounded-full border-2 transition-all',
-                          widget.config.color === color ? 'border-gray-900 scale-110' : 'border-transparent hover:scale-105',
-                        ]"
-                        :style="{ backgroundColor: color }"
-                        @click="widget.config.color = color"
+                    <!-- Chart Preview -->
+                    <div
+                      v-else-if="['line-chart', 'bar-chart'].includes(widget.type)"
+                      class="h-32"
+                    >
+                      <div
+                        v-if="getPreviewChartData(widget).length > 0"
+                        class="h-full"
+                      >
+                        <!-- Simple bar visualization -->
+                        <div
+                          v-if="widget.type === 'bar-chart'"
+                          class="flex items-end justify-around h-full gap-1 pb-6"
+                        >
+                          <div
+                            v-for="(point, i) in getPreviewChartData(widget).slice(0, 7)"
+                            :key="i"
+                            class="flex-1 flex flex-col items-center"
+                          >
+                            <div
+                              class="w-full rounded-t transition-all"
+                              :style="{
+                                backgroundColor: widget.config?.color || '#f97316',
+                                height: `${Math.max(10, (point.value / Math.max(...getPreviewChartData(widget).map((p: any) => p.value))) * 100)}%`,
+                              }"
+                            />
+                            <span class="text-[10px] text-gray-400 mt-1 truncate w-full text-center">{{ point.label }}</span>
+                          </div>
+                        </div>
+                        <!-- Simple line visualization -->
+                        <div
+                          v-else
+                          class="h-full relative"
+                        >
+                          <svg
+                            class="w-full h-full"
+                            viewBox="0 0 100 50"
+                            preserveAspectRatio="none"
+                          >
+                            <polyline
+                              fill="none"
+                              :stroke="widget.config?.color || '#f97316'"
+                              stroke-width="2"
+                              :points="getPreviewChartData(widget).slice(0, 7).map((p: any, i: number) => {
+                                const maxVal = Math.max(...getPreviewChartData(widget).map((d: any) => d.value))
+                                const x = (i / Math.max(getPreviewChartData(widget).length - 1, 1)) * 100
+                                const y = 50 - (p.value / maxVal) * 45
+                                return `${x},${y}`
+                              }).join(' ')"
+                            />
+                          </svg>
+                          <div class="absolute bottom-0 left-0 right-0 flex justify-between text-[10px] text-gray-400">
+                            <span>{{ getPreviewChartData(widget)[0]?.label }}</span>
+                            <span>{{ getPreviewChartData(widget)[getPreviewChartData(widget).length - 1]?.label }}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        v-else
+                        class="h-full flex items-center justify-center"
+                      >
+                        <Icon
+                          :name="getWidgetIcon(widget.type)"
+                          class="w-8 h-8"
+                          :style="{ color: widget.config?.color || '#f97316' }"
+                        />
+                      </div>
+                    </div>
+
+                    <!-- Pie Chart Preview -->
+                    <div
+                      v-else-if="widget.type === 'pie-chart'"
+                      class="h-32 flex items-center justify-center"
+                    >
+                      <div
+                        class="w-20 h-20 rounded-full"
+                        :style="{
+                          background: `conic-gradient(${widget.config?.color || '#f97316'} 0% 60%, #e5e7eb 60% 100%)`,
+                        }"
                       />
                     </div>
-                  </div>
 
-                  <!-- Size selector -->
-                  <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">
-                      Widget Size
-                    </label>
-                    <div class="flex gap-2">
-                      <button
-                        v-for="size in ['small', 'medium', 'large']"
-                        :key="size"
-                        :class="[
-                          'px-3 py-1.5 text-sm rounded-lg border transition-colors',
-                          widget.size === size
-                            ? 'bg-tamarindo-100 border-tamarindo-300 text-tamarindo-700'
-                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50',
-                        ]"
-                        @click="widget.size = size"
-                      >
-                        {{ size.charAt(0).toUpperCase() + size.slice(1) }}
-                      </button>
+                    <!-- Table Preview -->
+                    <div
+                      v-else-if="widget.type === 'table'"
+                      class="overflow-x-auto"
+                    >
+                      <div class="text-xs text-gray-500 text-center py-4">
+                        <Icon
+                          name="heroicons:table-cells"
+                          class="w-6 h-6 mx-auto mb-1 text-gray-400"
+                        />
+                        Data table with {{ Array.isArray(widget.config?.metric) ? widget.config.metric.length : 4 }} columns
+                      </div>
+                    </div>
+
+                    <!-- Text Preview -->
+                    <div
+                      v-else-if="widget.type === 'text'"
+                      class="text-sm text-gray-700 whitespace-pre-wrap"
+                    >
+                      {{ widget.config?.content || 'Your text will appear here...' }}
                     </div>
                   </div>
                 </div>
+              </template>
 
-                <!-- Widget preview -->
-                <div
-                  class="mt-4 rounded-lg p-6 text-center"
-                  :style="{ backgroundColor: (widget.config?.color || '#f97316') + '10' }"
-                >
-                  <div
-                    v-if="widget.type === 'metric'"
-                    class="text-center"
-                  >
-                    <p class="text-sm text-gray-500 mb-1">
-                      {{ getMetricLabel(widget.config?.metric || 'impressions') }}
-                    </p>
-                    <p
-                      class="text-3xl font-bold"
-                      :style="{ color: widget.config?.color || '#f97316' }"
-                    >
-                      --
-                    </p>
-                    <p
-                      v-if="widget.config?.showComparison"
-                      class="text-xs text-gray-400 mt-1"
-                    >
-                      vs previous period
-                    </p>
-                  </div>
-                  <div
-                    v-else-if="widget.type === 'text'"
-                    class="text-left"
-                  >
-                    <p class="text-gray-700 whitespace-pre-wrap">
-                      {{ widget.config?.content || 'Your text will appear here...' }}
-                    </p>
-                  </div>
-                  <div v-else>
-                    <Icon
-                      :name="getWidgetIcon(widget.type)"
-                      class="mx-auto h-10 w-10"
-                      :style="{ color: widget.config?.color || '#f97316' }"
-                    />
-                    <p class="mt-2 text-sm font-medium text-gray-700">
-                      {{ getMetricLabel(widget.config?.metric || 'impressions') }}
-                    </p>
-                    <p class="text-xs text-gray-400 mt-1">
-                      {{ widget.type === 'table' ? 'Data table preview' : 'Chart preview' }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- AI Insights section -->
-          <div class="card card-body mt-6">
-            <div class="flex items-center justify-between mb-4">
-              <div class="flex items-center gap-2">
-                <Icon
-                  name="heroicons:sparkles"
-                  class="w-5 h-5 text-purple-500"
-                />
-                <h3 class="font-semibold text-gray-900">
-                  AI Insights
-                </h3>
-              </div>
-              <button
-                class="btn-secondary text-sm"
-                :disabled="isGeneratingInsights"
-                @click="generateAIInsights"
-              >
-                <Icon
-                  v-if="isGeneratingInsights"
-                  name="heroicons:arrow-path"
-                  class="w-4 h-4 mr-2 animate-spin"
-                />
-                <Icon
-                  v-else
-                  name="heroicons:sparkles"
-                  class="w-4 h-4 mr-2"
-                />
-                {{ currentReport.aiInsights ? 'Regenerate' : 'Generate Insights' }}
-              </button>
-            </div>
-
-            <!-- Error message -->
-            <div
-              v-if="insightsError"
-              class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
-            >
-              {{ insightsError }}
-            </div>
-
-            <!-- Loading state -->
-            <div
-              v-if="isGeneratingInsights"
-              class="py-8 text-center"
-            >
-              <Icon
-                name="heroicons:sparkles"
-                class="mx-auto h-8 w-8 text-purple-400 animate-pulse"
-              />
-              <p class="mt-2 text-sm text-gray-500">
-                Generating insights with AI...
-              </p>
-            </div>
-
-            <!-- Empty state -->
-            <div
-              v-else-if="!currentReport.aiInsights"
-              class="py-8 text-center bg-gray-50 rounded-lg"
-            >
-              <Icon
-                name="heroicons:light-bulb"
-                class="mx-auto h-8 w-8 text-gray-300"
-              />
-              <p class="mt-2 text-sm text-gray-500">
-                Click "Generate Insights" to get AI-powered analysis of your report data.
-              </p>
-            </div>
-
-            <!-- Insights content -->
-            <div
-              v-else
-              class="prose prose-sm max-w-none text-gray-700"
-            >
+              <!-- Drop zone at end -->
               <div
-                class="whitespace-pre-wrap"
-                v-html="currentReport.aiInsights.replace(/## /g, '<h4 class=\'text-lg font-semibold text-gray-900 mt-4 mb-2\'>').replace(/\n- /g, '<br>• ').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')"
-              />
+                v-if="draggedWidgetType || isDraggingExisting"
+                class="col-span-4 h-24 border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center text-gray-400 transition-colors"
+                :class="{ 'border-tamarindo-400 bg-tamarindo-50': dragOverIndex === widgets.length }"
+                @dragover="handleDragOver($event, widgets.length)"
+                @dragleave="handleDragLeave"
+                @drop="handleDrop($event, widgets.length)"
+              >
+                <span class="text-sm">Drop widget here</span>
+              </div>
             </div>
           </div>
         </div>
