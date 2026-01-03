@@ -161,6 +161,27 @@ export function useReports() {
     }
   }
 
+  /**
+   * Duplicate a report
+   */
+  async function duplicateReport(id: string, options?: { name?: string; clientId?: string }): Promise<{ success: boolean; report?: Report; error?: string }> {
+    try {
+      const response = await $fetch<{ success: boolean; report: Report }>(`/api/reports/${id}/duplicate`, {
+        method: 'POST',
+        body: options || {},
+      })
+
+      if (response.success && response.report) {
+        reports.value = [response.report, ...reports.value]
+      }
+
+      return { success: true, report: response.report }
+    }
+    catch (e: any) {
+      return { success: false, error: e?.data?.message || 'Failed to duplicate report' }
+    }
+  }
+
   return {
     reports: readonly(reports),
     currentReport: readonly(currentReport),
@@ -170,5 +191,6 @@ export function useReports() {
     createReport,
     updateReport,
     deleteReport,
+    duplicateReport,
   }
 }

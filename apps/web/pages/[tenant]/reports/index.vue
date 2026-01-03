@@ -8,7 +8,10 @@ definePageMeta({
 const route = useRoute()
 const tenant = computed(() => route.params.tenant as string)
 
-const { reports, isLoading, fetchReports, deleteReport } = useReports()
+const { reports, isLoading, fetchReports, deleteReport, duplicateReport } = useReports()
+
+// Duplicate state
+const isDuplicating = ref<string | null>(null)
 
 // Filters
 const filterType = ref('all')
@@ -42,6 +45,22 @@ async function handleDelete(report: any) {
   if (!result.success) {
     alert(result.error || 'Failed to delete report')
   }
+}
+
+async function handleDuplicate(report: any) {
+  isDuplicating.value = report.id
+
+  const result = await duplicateReport(report.id)
+
+  if (result.success && result.report) {
+    // Navigate to the new report
+    navigateTo(`/${tenant.value}/reports/${result.report.id}`)
+  }
+  else {
+    alert(result.error || 'Failed to duplicate report')
+  }
+
+  isDuplicating.value = null
 }
 
 function formatDate(dateString: string) {
@@ -173,6 +192,23 @@ function getTypeLabel(type: string) {
               <span :class="['badge', getStatusColor(report.status)]">
                 {{ report.status.toLowerCase() }}
               </span>
+              <button
+                class="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-tamarindo-600"
+                title="Duplicate"
+                :disabled="isDuplicating === report.id"
+                @click.stop="handleDuplicate(report)"
+              >
+                <Icon
+                  v-if="isDuplicating === report.id"
+                  name="heroicons:arrow-path"
+                  class="w-4 h-4 animate-spin"
+                />
+                <Icon
+                  v-else
+                  name="heroicons:document-duplicate"
+                  class="w-4 h-4"
+                />
+              </button>
               <button
                 class="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-600"
                 title="Delete"
