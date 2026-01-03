@@ -253,6 +253,12 @@ model Report {
   scheduledAt  DateTime?
   scheduleCron String?    // Cron expression for recurring
 
+  // Public sharing (Live Links)
+  slug           String?   @unique // URL-friendly identifier for public link
+  isPublic       Boolean   @default(false)
+  sharePassword  String?   // Optional password protection (hashed)
+  shareExpiresAt DateTime? // Optional expiration date
+
   // Relations
   tenantId   String
   tenant     Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -264,6 +270,7 @@ model Report {
   @@index([tenantId])
   @@index([clientId])
   @@index([status])
+  @@index([slug])
 }
 
 model Dashboard {

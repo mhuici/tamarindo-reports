@@ -59,6 +59,18 @@ const isGeneratingPDF = ref(false)
 const pdfError = ref('')
 const pdfSuccess = ref('')
 
+// Share state
+const showShareModal = ref(false)
+const isUpdatingShare = ref(false)
+const shareSettings = ref({
+  isPublic: false,
+  hasPassword: false,
+  password: '',
+  expiresAt: null as string | null,
+  shareUrl: null as string | null,
+  slug: null as string | null,
+})
+
 // Fetch report on mount
 onMounted(async () => {
   const report = await fetchReport(reportId.value)
@@ -448,6 +460,73 @@ function downloadPDF() {
   }
 }
 
+// Share functions
+async function openShareModal() {
+  showShareModal.value = true
+  // Load current share settings from report
+  if (currentReport.value) {
+    const r = currentReport.value as any
+    shareSettings.value = {
+      isPublic: r.isPublic || false,
+      hasPassword: !!r.sharePassword,
+      password: '',
+      expiresAt: r.shareExpiresAt || null,
+      shareUrl: r.slug ? `${window.location.origin}/r/${r.slug}` : null,
+      slug: r.slug || null,
+    }
+  }
+}
+
+async function updateShareSettings() {
+  isUpdatingShare.value = true
+
+  try {
+    const response = await $fetch<{
+      success: boolean
+      share: {
+        isPublic: boolean
+        slug: string | null
+        hasPassword: boolean
+        expiresAt: string | null
+        shareUrl: string | null
+      }
+    }>(`/api/reports/${reportId.value}/share`, {
+      method: 'POST',
+      body: {
+        isPublic: shareSettings.value.isPublic,
+        password: shareSettings.value.password || null,
+        expiresAt: shareSettings.value.expiresAt || null,
+      },
+    })
+
+    if (response.success) {
+      shareSettings.value = {
+        isPublic: response.share.isPublic,
+        hasPassword: response.share.hasPassword,
+        password: '',
+        expiresAt: response.share.expiresAt,
+        shareUrl: response.share.shareUrl,
+        slug: response.share.slug,
+      }
+      // Refresh report
+      await fetchReport(reportId.value)
+    }
+  }
+  catch (e: any) {
+    alert(e?.data?.message || 'Failed to update share settings')
+  }
+  finally {
+    isUpdatingShare.value = false
+  }
+}
+
+function copyShareUrl() {
+  if (shareSettings.value.shareUrl) {
+    navigator.clipboard.writeText(shareSettings.value.shareUrl)
+    alert('Link copied to clipboard!')
+  }
+}
+
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -638,6 +717,17 @@ function getPreviewChartData(widget: any) {
               class="w-4 h-4 mr-2"
             />
             Save
+          </button>
+
+          <button
+            class="btn-secondary"
+            @click="openShareModal"
+          >
+            <Icon
+              name="heroicons:share"
+              class="w-4 h-4 mr-2"
+            />
+            Share
           </button>
 
           <button
@@ -1509,6 +1599,123 @@ function getPreviewChartData(widget: any) {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Share Modal -->
+    <div
+      v-if="showShareModal"
+      class="fixed inset-0 z-50 flex items-center justify-center"
+    >
+      <!-- Backdrop -->
+      <div
+        class="absolute inset-0 bg-black/50"
+        @click="showShareModal = false"
+      />
+
+      <!-- Modal -->
+      <div class="relative bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-semibold text-gray-900">
+            Share Report
+          </h3>
+          <button
+            class="p-1 hover:bg-gray-100 rounded"
+            @click="showShareModal = false"
+          >
+            <Icon
+              name="heroicons:x-mark"
+              class="w-5 h-5 text-gray-400"
+            />
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Public toggle -->
+          <label class="flex items-center justify-between p-4 bg-gray-50 rounded-lg cursor-pointer">
+            <div>
+              <p class="font-medium text-gray-900">Enable public link</p>
+              <p class="text-sm text-gray-500">Anyone with the link can view this report</p>
+            </div>
+            <input
+              v-model="shareSettings.isPublic"
+              type="checkbox"
+              class="w-5 h-5 rounded border-gray-300 text-tamarindo-600"
+            >
+          </label>
+
+          <!-- Share URL (shown when public) -->
+          <div v-if="shareSettings.isPublic && shareSettings.shareUrl">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Share URL</label>
+            <div class="flex gap-2">
+              <input
+                type="text"
+                :value="shareSettings.shareUrl"
+                readonly
+                class="input input-sm flex-1 bg-gray-50"
+              >
+              <button
+                class="btn-secondary px-3"
+                @click="copyShareUrl"
+              >
+                <Icon
+                  name="heroicons:clipboard-document"
+                  class="w-4 h-4"
+                />
+              </button>
+            </div>
+          </div>
+
+          <!-- Password protection -->
+          <div v-if="shareSettings.isPublic">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Password protection (optional)
+            </label>
+            <input
+              v-model="shareSettings.password"
+              type="password"
+              :placeholder="shareSettings.hasPassword ? '••••••• (password set)' : 'Enter password to protect'"
+              class="input input-sm"
+            >
+            <p class="text-xs text-gray-500 mt-1">
+              {{ shareSettings.hasPassword ? 'Leave blank to keep current password, or enter new password' : 'Leave blank for no password' }}
+            </p>
+          </div>
+
+          <!-- Expiration -->
+          <div v-if="shareSettings.isPublic">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              Link expiration (optional)
+            </label>
+            <input
+              v-model="shareSettings.expiresAt"
+              type="datetime-local"
+              class="input input-sm"
+            >
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex gap-3 mt-6">
+          <button
+            class="flex-1 btn-secondary"
+            @click="showShareModal = false"
+          >
+            Cancel
+          </button>
+          <button
+            class="flex-1 btn-primary"
+            :disabled="isUpdatingShare"
+            @click="updateShareSettings"
+          >
+            <Icon
+              v-if="isUpdatingShare"
+              name="heroicons:arrow-path"
+              class="w-4 h-4 mr-2 animate-spin"
+            />
+            {{ shareSettings.isPublic ? 'Save & Get Link' : 'Disable Sharing' }}
+          </button>
         </div>
       </div>
     </div>
