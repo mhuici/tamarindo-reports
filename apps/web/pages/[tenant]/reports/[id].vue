@@ -264,6 +264,22 @@ function handleResizeEnd() {
   document.removeEventListener('mouseup', handleResizeEnd)
 }
 
+// Default chart options
+function getDefaultChartOptions(type: string) {
+  const isChart = ['line-chart', 'bar-chart', 'pie-chart'].includes(type)
+  if (!isChart) return {}
+
+  return {
+    showLegend: false,
+    showXAxis: true,
+    showYAxis: true,
+    showGrid: true,
+    fillArea: type === 'line-chart',
+    lineStyle: 'solid' as 'solid' | 'dashed',
+    barRadius: 4,
+  }
+}
+
 async function addWidget(type: string) {
   const widgetType = widgetTypes.find(w => w.type === type)
   const newWidget = {
@@ -274,6 +290,7 @@ async function addWidget(type: string) {
       metric: type === 'table' ? ['impressions', 'clicks', 'spend', 'ctr'] : 'impressions',
       showComparison: true,
       color: '#f97316',
+      ...getDefaultChartOptions(type),
     },
     size: widgetType?.defaultSize || 'medium',
   }
@@ -293,6 +310,7 @@ async function addWidgetAtIndex(type: string, index: number) {
       metric: type === 'table' ? ['impressions', 'clicks', 'spend', 'ctr'] : 'impressions',
       showComparison: true,
       color: '#f97316',
+      ...getDefaultChartOptions(type),
     },
     size: widgetType?.defaultSize || 'medium',
   }
@@ -300,6 +318,47 @@ async function addWidgetAtIndex(type: string, index: number) {
   selectedWidgetId.value = newWidget.id
 
   await loadWidgetPreview(newWidget)
+}
+
+// Auto-layout optimizer - arranges widgets for optimal visual flow
+function autoLayout() {
+  if (widgets.value.length === 0) return
+
+  // Separate widgets by type for optimal arrangement
+  const metricWidgets = widgets.value.filter(w => w.type === 'metric')
+  const chartWidgets = widgets.value.filter(w => ['line-chart', 'bar-chart', 'pie-chart'].includes(w.type))
+  const textWidgets = widgets.value.filter(w => w.type === 'text')
+  const tableWidgets = widgets.value.filter(w => w.type === 'table')
+
+  // Optimal sizes for each type
+  metricWidgets.forEach(w => w.size = 'small')
+  chartWidgets.forEach(w => w.size = w.type === 'pie-chart' ? 'medium' : 'large')
+  textWidgets.forEach(w => w.size = 'large')
+  tableWidgets.forEach(w => w.size = 'large')
+
+  // Group metric cards (up to 4 per row)
+  const metricRows: any[][] = []
+  for (let i = 0; i < metricWidgets.length; i += 4) {
+    metricRows.push(metricWidgets.slice(i, i + 4))
+  }
+
+  // Arrange: Metrics first (KPIs at top), then charts, then tables, then text at bottom
+  const newOrder: any[] = []
+
+  // Add metric rows
+  metricRows.forEach(row => newOrder.push(...row))
+
+  // Add charts (large ones take full row)
+  chartWidgets.forEach(w => newOrder.push(w))
+
+  // Add tables
+  tableWidgets.forEach(w => newOrder.push(w))
+
+  // Add text blocks at the end (summaries)
+  textWidgets.forEach(w => newOrder.push(w))
+
+  widgets.value = newOrder
+  saveState()
 }
 
 function removeWidget(id: string) {
@@ -512,6 +571,19 @@ function getPreviewChartData(widget: any) {
               />
             </button>
           </div>
+
+          <!-- Auto-Layout button -->
+          <button
+            class="p-2 border border-gray-200 rounded-lg hover:bg-gray-100 mr-2"
+            title="Auto-layout widgets"
+            :disabled="widgets.length === 0"
+            @click="autoLayout"
+          >
+            <Icon
+              name="heroicons:squares-2x2"
+              class="w-4 h-4"
+            />
+          </button>
 
           <!-- Edit/Preview toggle -->
           <div class="flex items-center border border-gray-200 rounded-lg overflow-hidden mr-2">
@@ -770,9 +842,11 @@ function getPreviewChartData(widget: any) {
                         v-if="getPreviewChartData(widget).length > 0"
                         class="h-full"
                       >
+                        <!-- Bar Chart -->
                         <div
                           v-if="widget.type === 'bar-chart'"
-                          class="flex items-end justify-around h-full gap-1 pb-4"
+                          class="flex items-end justify-around h-full gap-1"
+                          :class="widget.config?.showXAxis !== false ? 'pb-4' : 'pb-1'"
                         >
                           <div
                             v-for="(point, i) in getPreviewChartData(widget).slice(0, 7)"
@@ -780,30 +854,69 @@ function getPreviewChartData(widget: any) {
                             class="flex-1 flex flex-col items-center"
                           >
                             <div
-                              class="w-full rounded-t"
+                              class="w-full transition-all"
                               :style="{
                                 backgroundColor: widget.config?.color || '#f97316',
                                 height: `${Math.max(10, (point.value / Math.max(...getPreviewChartData(widget).map((p: any) => p.value))) * 100)}%`,
+                                borderRadius: `${widget.config?.barRadius || 0}px ${widget.config?.barRadius || 0}px 0 0`,
                               }"
                             />
+                            <span
+                              v-if="widget.config?.showXAxis !== false"
+                              class="text-[8px] text-gray-400 mt-1 truncate w-full text-center"
+                            >
+                              {{ point.label?.slice(-2) }}
+                            </span>
                           </div>
                         </div>
+                        <!-- Line Chart -->
                         <div
                           v-else
-                          class="h-full"
+                          class="h-full relative"
                         >
+                          <!-- Grid lines -->
                           <svg
-                            class="w-full h-full"
+                            v-if="widget.config?.showGrid !== false"
+                            class="absolute inset-0 w-full h-full"
+                            preserveAspectRatio="none"
+                          >
+                            <line
+                              v-for="i in 3"
+                              :key="i"
+                              x1="0"
+                              :y1="`${i * 25}%`"
+                              x2="100%"
+                              :y2="`${i * 25}%`"
+                              stroke="#e5e7eb"
+                              stroke-width="1"
+                            />
+                          </svg>
+                          <svg
+                            class="w-full h-full relative"
                             viewBox="0 0 100 40"
                             preserveAspectRatio="none"
                           >
+                            <!-- Fill area -->
+                            <polygon
+                              v-if="widget.config?.fillArea"
+                              :fill="widget.config?.color || '#f97316'"
+                              fill-opacity="0.2"
+                              :points="`0,40 ${getPreviewChartData(widget).slice(0, 7).map((p: any, i: number) => {
+                                const maxVal = Math.max(...getPreviewChartData(widget).map((d: any) => d.value))
+                                const x = (i / Math.max(getPreviewChartData(widget).slice(0, 7).length - 1, 1)) * 100
+                                const y = 40 - (p.value / maxVal) * 35
+                                return `${x},${y}`
+                              }).join(' ')} 100,40`"
+                            />
+                            <!-- Line -->
                             <polyline
                               fill="none"
                               :stroke="widget.config?.color || '#f97316'"
                               stroke-width="2"
+                              :stroke-dasharray="widget.config?.lineStyle === 'dashed' ? '4,2' : 'none'"
                               :points="getPreviewChartData(widget).slice(0, 7).map((p: any, i: number) => {
                                 const maxVal = Math.max(...getPreviewChartData(widget).map((d: any) => d.value))
-                                const x = (i / Math.max(getPreviewChartData(widget).length - 1, 1)) * 100
+                                const x = (i / Math.max(getPreviewChartData(widget).slice(0, 7).length - 1, 1)) * 100
                                 const y = 40 - (p.value / maxVal) * 35
                                 return `${x},${y}`
                               }).join(' ')"
@@ -945,60 +1058,145 @@ function getPreviewChartData(widget: any) {
                     v-else-if="['line-chart', 'bar-chart', 'pie-chart'].includes(widget.type)"
                     class="bg-gray-50 rounded-xl p-6"
                   >
-                    <p class="text-sm font-medium text-gray-700 mb-4">
-                      {{ widget.title }}
-                    </p>
-                    <div class="h-48">
-                      <!-- Add full chart rendering here -->
+                    <div class="flex items-center justify-between mb-4">
+                      <p class="text-sm font-medium text-gray-700">
+                        {{ widget.title }}
+                      </p>
+                      <!-- Legend -->
                       <div
-                        v-if="widget.type === 'bar-chart' && getPreviewChartData(widget).length > 0"
-                        class="flex items-end justify-around h-full gap-2 pb-8"
+                        v-if="widget.config?.showLegend"
+                        class="flex items-center gap-2"
                       >
                         <div
-                          v-for="(point, i) in getPreviewChartData(widget)"
-                          :key="i"
-                          class="flex-1 flex flex-col items-center"
+                          class="w-3 h-3 rounded-sm"
+                          :style="{ backgroundColor: widget.config?.color || '#f97316' }"
+                        />
+                        <span class="text-xs text-gray-500">{{ getMetricLabel(widget.config?.metric || 'impressions') }}</span>
+                      </div>
+                    </div>
+                    <div class="h-48 flex">
+                      <!-- Y Axis Labels -->
+                      <div
+                        v-if="widget.config?.showYAxis !== false && widget.type !== 'pie-chart'"
+                        class="w-10 flex flex-col justify-between text-right pr-2 text-[10px] text-gray-400 py-1"
+                      >
+                        <span>{{ Math.round(Math.max(...getPreviewChartData(widget).map((p: any) => p.value))) }}</span>
+                        <span>{{ Math.round(Math.max(...getPreviewChartData(widget).map((p: any) => p.value)) / 2) }}</span>
+                        <span>0</span>
+                      </div>
+                      <div class="flex-1">
+                        <!-- Bar Chart -->
+                        <div
+                          v-if="widget.type === 'bar-chart' && getPreviewChartData(widget).length > 0"
+                          class="flex items-end justify-around h-full gap-2"
+                          :class="widget.config?.showXAxis !== false ? 'pb-6' : 'pb-1'"
                         >
                           <div
-                            class="w-full rounded-t transition-all"
-                            :style="{
-                              backgroundColor: widget.config?.color || '#f97316',
-                              height: `${Math.max(10, (point.value / Math.max(...getPreviewChartData(widget).map((p: any) => p.value))) * 100)}%`,
-                            }"
-                          />
-                          <span class="text-xs text-gray-500 mt-2">{{ point.label }}</span>
+                            v-for="(point, i) in getPreviewChartData(widget)"
+                            :key="i"
+                            class="flex-1 flex flex-col items-center"
+                          >
+                            <div
+                              class="w-full transition-all"
+                              :style="{
+                                backgroundColor: widget.config?.color || '#f97316',
+                                height: `${Math.max(5, (point.value / Math.max(...getPreviewChartData(widget).map((p: any) => p.value))) * 100)}%`,
+                                borderRadius: `${widget.config?.barRadius || 0}px ${widget.config?.barRadius || 0}px 0 0`,
+                              }"
+                            />
+                            <span
+                              v-if="widget.config?.showXAxis !== false"
+                              class="text-xs text-gray-500 mt-2"
+                            >
+                              {{ point.label }}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                      <div
-                        v-else-if="widget.type === 'line-chart'"
-                        class="h-full relative"
-                      >
-                        <svg
-                          class="w-full h-full"
-                          viewBox="0 0 100 60"
-                          preserveAspectRatio="none"
-                        >
-                          <polyline
-                            fill="none"
-                            :stroke="widget.config?.color || '#f97316'"
-                            stroke-width="2"
-                            :points="getPreviewChartData(widget).map((p: any, i: number) => {
-                              const maxVal = Math.max(...getPreviewChartData(widget).map((d: any) => d.value), 1)
-                              const x = (i / Math.max(getPreviewChartData(widget).length - 1, 1)) * 100
-                              const y = 55 - (p.value / maxVal) * 50
-                              return `${x},${y}`
-                            }).join(' ')"
-                          />
-                        </svg>
-                      </div>
-                      <div
-                        v-else-if="widget.type === 'pie-chart'"
-                        class="h-full flex items-center justify-center"
-                      >
+                        <!-- Line Chart -->
                         <div
-                          class="w-32 h-32 rounded-full"
-                          :style="{ background: `conic-gradient(${widget.config?.color || '#f97316'} 0% 60%, #e5e7eb 60% 100%)` }"
-                        />
+                          v-else-if="widget.type === 'line-chart'"
+                          class="h-full relative"
+                        >
+                          <!-- Grid lines -->
+                          <svg
+                            v-if="widget.config?.showGrid !== false"
+                            class="absolute inset-0 w-full h-full"
+                            preserveAspectRatio="none"
+                          >
+                            <line
+                              v-for="i in 4"
+                              :key="'h'+i"
+                              x1="0"
+                              :y1="`${i * 20}%`"
+                              x2="100%"
+                              :y2="`${i * 20}%`"
+                              stroke="#e5e7eb"
+                              stroke-width="1"
+                            />
+                            <line
+                              v-for="i in 6"
+                              :key="'v'+i"
+                              :x1="`${i * 16.66}%`"
+                              y1="0"
+                              :x2="`${i * 16.66}%`"
+                              y2="100%"
+                              stroke="#e5e7eb"
+                              stroke-width="1"
+                            />
+                          </svg>
+                          <svg
+                            class="w-full h-full relative"
+                            viewBox="0 0 100 60"
+                            preserveAspectRatio="none"
+                          >
+                            <!-- Fill area -->
+                            <polygon
+                              v-if="widget.config?.fillArea"
+                              :fill="widget.config?.color || '#f97316'"
+                              fill-opacity="0.15"
+                              :points="`0,60 ${getPreviewChartData(widget).map((p: any, i: number) => {
+                                const maxVal = Math.max(...getPreviewChartData(widget).map((d: any) => d.value), 1)
+                                const x = (i / Math.max(getPreviewChartData(widget).length - 1, 1)) * 100
+                                const y = 55 - (p.value / maxVal) * 50
+                                return `${x},${y}`
+                              }).join(' ')} 100,60`"
+                            />
+                            <!-- Line -->
+                            <polyline
+                              fill="none"
+                              :stroke="widget.config?.color || '#f97316'"
+                              stroke-width="2"
+                              :stroke-dasharray="widget.config?.lineStyle === 'dashed' ? '6,3' : 'none'"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              :points="getPreviewChartData(widget).map((p: any, i: number) => {
+                                const maxVal = Math.max(...getPreviewChartData(widget).map((d: any) => d.value), 1)
+                                const x = (i / Math.max(getPreviewChartData(widget).length - 1, 1)) * 100
+                                const y = 55 - (p.value / maxVal) * 50
+                                return `${x},${y}`
+                              }).join(' ')"
+                            />
+                          </svg>
+                          <!-- X Axis Labels -->
+                          <div
+                            v-if="widget.config?.showXAxis !== false && getPreviewChartData(widget).length > 0"
+                            class="flex justify-between mt-1 text-[10px] text-gray-400"
+                          >
+                            <span>{{ getPreviewChartData(widget)[0]?.label }}</span>
+                            <span>{{ getPreviewChartData(widget)[Math.floor(getPreviewChartData(widget).length / 2)]?.label }}</span>
+                            <span>{{ getPreviewChartData(widget)[getPreviewChartData(widget).length - 1]?.label }}</span>
+                          </div>
+                        </div>
+                        <!-- Pie Chart -->
+                        <div
+                          v-else-if="widget.type === 'pie-chart'"
+                          class="h-full flex items-center justify-center"
+                        >
+                          <div
+                            class="w-32 h-32 rounded-full"
+                            :style="{ background: `conic-gradient(${widget.config?.color || '#f97316'} 0% 60%, #e5e7eb 60% 100%)` }"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1152,6 +1350,138 @@ function getPreviewChartData(widget: any) {
                   >
                   <span class="text-xs text-gray-600">Show comparison with previous period</span>
                 </label>
+              </div>
+
+              <!-- Chart Options -->
+              <div v-if="['line-chart', 'bar-chart', 'pie-chart'].includes(selectedWidget.type)">
+                <label class="block text-xs font-medium text-gray-600 mb-2">Chart Options</label>
+                <div class="space-y-2">
+                  <!-- Show Legend -->
+                  <label class="flex items-center gap-2 cursor-pointer">
+                    <input
+                      v-model="selectedWidget.config.showLegend"
+                      type="checkbox"
+                      class="rounded border-gray-300 text-tamarindo-600"
+                    >
+                    <span class="text-xs text-gray-600">Show legend</span>
+                  </label>
+
+                  <!-- Show X Axis (not for pie) -->
+                  <label
+                    v-if="selectedWidget.type !== 'pie-chart'"
+                    class="flex items-center gap-2 cursor-pointer"
+                  >
+                    <input
+                      v-model="selectedWidget.config.showXAxis"
+                      type="checkbox"
+                      class="rounded border-gray-300 text-tamarindo-600"
+                    >
+                    <span class="text-xs text-gray-600">Show X axis labels</span>
+                  </label>
+
+                  <!-- Show Y Axis (not for pie) -->
+                  <label
+                    v-if="selectedWidget.type !== 'pie-chart'"
+                    class="flex items-center gap-2 cursor-pointer"
+                  >
+                    <input
+                      v-model="selectedWidget.config.showYAxis"
+                      type="checkbox"
+                      class="rounded border-gray-300 text-tamarindo-600"
+                    >
+                    <span class="text-xs text-gray-600">Show Y axis labels</span>
+                  </label>
+
+                  <!-- Show Grid (not for pie) -->
+                  <label
+                    v-if="selectedWidget.type !== 'pie-chart'"
+                    class="flex items-center gap-2 cursor-pointer"
+                  >
+                    <input
+                      v-model="selectedWidget.config.showGrid"
+                      type="checkbox"
+                      class="rounded border-gray-300 text-tamarindo-600"
+                    >
+                    <span class="text-xs text-gray-600">Show grid lines</span>
+                  </label>
+
+                  <!-- Fill Area (line chart only) -->
+                  <label
+                    v-if="selectedWidget.type === 'line-chart'"
+                    class="flex items-center gap-2 cursor-pointer"
+                  >
+                    <input
+                      v-model="selectedWidget.config.fillArea"
+                      type="checkbox"
+                      class="rounded border-gray-300 text-tamarindo-600"
+                    >
+                    <span class="text-xs text-gray-600">Fill area under line</span>
+                  </label>
+                </div>
+
+                <!-- Line Style (line chart only) -->
+                <div
+                  v-if="selectedWidget.type === 'line-chart'"
+                  class="mt-3"
+                >
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Line Style</label>
+                  <div class="grid grid-cols-2 gap-1">
+                    <button
+                      :class="[
+                        'px-2 py-1.5 text-xs rounded transition-colors',
+                        selectedWidget.config.lineStyle === 'solid'
+                          ? 'bg-tamarindo-500 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                      ]"
+                      @click="selectedWidget.config.lineStyle = 'solid'"
+                    >
+                      ─── Solid
+                    </button>
+                    <button
+                      :class="[
+                        'px-2 py-1.5 text-xs rounded transition-colors',
+                        selectedWidget.config.lineStyle === 'dashed'
+                          ? 'bg-tamarindo-500 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                      ]"
+                      @click="selectedWidget.config.lineStyle = 'dashed'"
+                    >
+                      - - - Dashed
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Bar Radius (bar chart only) -->
+                <div
+                  v-if="selectedWidget.type === 'bar-chart'"
+                  class="mt-3"
+                >
+                  <label class="block text-xs font-medium text-gray-600 mb-1">Bar Corners</label>
+                  <div class="grid grid-cols-2 gap-1">
+                    <button
+                      :class="[
+                        'px-2 py-1.5 text-xs rounded transition-colors',
+                        selectedWidget.config.barRadius === 0
+                          ? 'bg-tamarindo-500 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                      ]"
+                      @click="selectedWidget.config.barRadius = 0"
+                    >
+                      Square
+                    </button>
+                    <button
+                      :class="[
+                        'px-2 py-1.5 text-xs rounded transition-colors',
+                        selectedWidget.config.barRadius === 4
+                          ? 'bg-tamarindo-500 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                      ]"
+                      @click="selectedWidget.config.barRadius = 4"
+                    >
+                      Rounded
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <!-- Actions -->
