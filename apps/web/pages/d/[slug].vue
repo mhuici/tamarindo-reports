@@ -321,6 +321,9 @@ const branding = computed(() => {
     secondaryColor: b?.secondaryColor || '#1f2937',
     logoUrl: b?.logoUrl || '',
     companyName: b?.companyName || dashboard.value?.tenantName || 'TamarindoReports',
+    // White-label expanded
+    reportFooterText: b?.reportFooterText || '',
+    hideFooterBranding: b?.hideFooterBranding || false,
   }
 })
 
@@ -848,7 +851,18 @@ function normalizeChartData(data: Array<{ label: string, value: number }>) {
       <!-- Footer -->
       <footer class="border-t border-gray-100 mt-12">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div class="flex items-center justify-center gap-2 text-sm text-gray-400">
+          <!-- Custom footer text -->
+          <div
+            v-if="branding.reportFooterText"
+            class="text-center text-sm text-gray-500 mb-3"
+          >
+            {{ branding.reportFooterText }}
+          </div>
+          <!-- Powered by (can be hidden) -->
+          <div
+            v-if="!branding.hideFooterBranding"
+            class="flex items-center justify-center gap-2 text-sm text-gray-400"
+          >
             <span>Powered by</span>
             <span class="font-medium text-gray-500">TamarindoReports</span>
           </div>

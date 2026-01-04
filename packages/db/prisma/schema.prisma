@@ -267,6 +267,9 @@ model Report {
   templateId String?
   template   ReportTemplate? @relation(fields: [templateId], references: [id])
 
+  // Email scheduling
+  schedule ReportSchedule?
+
   @@index([tenantId])
   @@index([clientId])
   @@index([status])
@@ -316,4 +319,56 @@ model Job {
 
   @@index([type, status])
   @@index([createdAt])
+}
+
+// ============================================
+// REPORT SCHEDULING
+// ============================================
+
+enum ScheduleFrequency {
+  ONCE       // One-time scheduled send
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+model ReportSchedule {
+  id          String            @id @default(cuid())
+  isActive    Boolean           @default(true)
+  frequency   ScheduleFrequency @default(WEEKLY)
+  timezone    String            @default("America/Mexico_City")
+  sendTime    String            @default("09:00") // HH:MM format
+  dayOfWeek   Int?              // 0-6 for weekly (0=Sunday)
+  dayOfMonth  Int?              // 1-31 for monthly
+  recipients  String[]          // Email addresses
+  lastSentAt  DateTime?
+  nextSendAt  DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Report relation
+  reportId String @unique
+  report   Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
+  // Send history
+  sendHistory ScheduleSendLog[]
+
+  @@index([nextSendAt])
+  @@index([isActive])
+}
+
+model ScheduleSendLog {
+  id        String   @id @default(cuid())
+  status    String   // success, failed
+  error     String?
+  recipients String[]
+  sentAt    DateTime @default(now())
+
+  // Schedule relation
+  scheduleId String
+  schedule   ReportSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@index([scheduleId])
+  @@index([sentAt])
 }

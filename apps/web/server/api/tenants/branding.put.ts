@@ -10,6 +10,10 @@ const updateBrandingSchema = z.object({
   companyName: z.string().min(1).max(200).optional(),
   tagline: z.string().max(500).optional(),
   favicon: z.string().url().or(z.literal('')).optional(),
+  // White-label expanded
+  reportFooterText: z.string().max(200).optional(), // e.g. "Prepared by [Agency]"
+  hideFooterBranding: z.boolean().optional(), // Hide "Powered by Tamarindo"
+  emailFromName: z.string().max(100).optional(), // e.g. "Agency Reports"
 })
 
 /**

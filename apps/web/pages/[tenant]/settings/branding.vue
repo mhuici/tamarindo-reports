@@ -24,6 +24,10 @@ const branding = reactive({
   companyName: '',
   tagline: '',
   favicon: '',
+  // White-label expanded
+  reportFooterText: '',
+  hideFooterBranding: false,
+  emailFromName: '',
 })
 
 const isLoading = ref(true)
@@ -62,6 +66,10 @@ onMounted(async () => {
       branding.companyName = b.companyName || tenantData.name
       branding.tagline = b.tagline || ''
       branding.favicon = b.favicon || ''
+      // White-label expanded
+      branding.reportFooterText = b.reportFooterText || ''
+      branding.hideFooterBranding = b.hideFooterBranding || false
+      branding.emailFromName = b.emailFromName || ''
     }
     else {
       branding.companyName = tenantData.name
@@ -168,6 +176,10 @@ async function handleSave() {
         companyName: branding.companyName,
         tagline: branding.tagline,
         favicon: branding.favicon,
+        // White-label expanded
+        reportFooterText: branding.reportFooterText,
+        hideFooterBranding: branding.hideFooterBranding,
+        emailFromName: branding.emailFromName,
       },
     })
 
@@ -570,6 +582,86 @@ const previewStyles = computed(() => ({
                     {{ branding.tagline }}
                   </p>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- White-Label Settings -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="font-semibold text-gray-900">
+                White-Label Settings
+              </h2>
+              <p class="text-sm text-gray-500 mt-1">
+                Customize how your brand appears on shared reports and emails
+              </p>
+            </div>
+            <div class="card-body space-y-4">
+              <!-- Report Footer Text -->
+              <div>
+                <label
+                  for="reportFooterText"
+                  class="label"
+                >Report Footer Text</label>
+                <input
+                  id="reportFooterText"
+                  v-model="branding.reportFooterText"
+                  type="text"
+                  class="input"
+                  placeholder="Prepared by Your Agency Name"
+                >
+                <p class="text-xs text-gray-400 mt-1">
+                  Custom text shown at the bottom of shared reports
+                </p>
+              </div>
+
+              <!-- Hide Footer Branding -->
+              <div class="flex items-center justify-between py-3 border-t border-gray-100">
+                <div>
+                  <label
+                    for="hideFooterBranding"
+                    class="font-medium text-gray-900"
+                  >Hide "Powered by Tamarindo"</label>
+                  <p class="text-sm text-gray-500">
+                    Remove the Tamarindo branding from shared report footers
+                  </p>
+                </div>
+                <button
+                  id="hideFooterBranding"
+                  type="button"
+                  role="switch"
+                  :aria-checked="branding.hideFooterBranding"
+                  :class="[
+                    branding.hideFooterBranding ? 'bg-tamarindo-500' : 'bg-gray-200',
+                    'relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-tamarindo-500 focus:ring-offset-2',
+                  ]"
+                  @click="branding.hideFooterBranding = !branding.hideFooterBranding"
+                >
+                  <span
+                    :class="[
+                      branding.hideFooterBranding ? 'translate-x-5' : 'translate-x-0',
+                      'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out',
+                    ]"
+                  />
+                </button>
+              </div>
+
+              <!-- Email From Name -->
+              <div class="pt-3 border-t border-gray-100">
+                <label
+                  for="emailFromName"
+                  class="label"
+                >Email Sender Name</label>
+                <input
+                  id="emailFromName"
+                  v-model="branding.emailFromName"
+                  type="text"
+                  class="input"
+                  placeholder="Your Agency Reports"
+                >
+                <p class="text-xs text-gray-400 mt-1">
+                  The name that appears when sending scheduled reports via email
+                </p>
               </div>
             </div>
           </div>

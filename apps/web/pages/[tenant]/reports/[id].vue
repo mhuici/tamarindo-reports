@@ -71,6 +71,57 @@ const shareSettings = ref({
   slug: null as string | null,
 })
 
+// Schedule state
+const showScheduleModal = ref(false)
+const isLoadingSchedule = ref(false)
+const isSavingSchedule = ref(false)
+const scheduleSettings = ref({
+  isActive: false,
+  frequency: 'WEEKLY' as 'ONCE' | 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY',
+  timezone: 'America/Mexico_City',
+  sendTime: '09:00',
+  dayOfWeek: 1 as number | null, // Monday
+  dayOfMonth: 1 as number | null,
+  recipients: [] as string[],
+  newRecipient: '',
+  lastSentAt: null as string | null,
+  nextSendAt: null as string | null,
+})
+
+const frequencyOptions = [
+  { value: 'ONCE', label: 'One time' },
+  { value: 'DAILY', label: 'Daily' },
+  { value: 'WEEKLY', label: 'Weekly' },
+  { value: 'BIWEEKLY', label: 'Every 2 weeks' },
+  { value: 'MONTHLY', label: 'Monthly' },
+]
+
+const dayOfWeekOptions = [
+  { value: 0, label: 'Sunday' },
+  { value: 1, label: 'Monday' },
+  { value: 2, label: 'Tuesday' },
+  { value: 3, label: 'Wednesday' },
+  { value: 4, label: 'Thursday' },
+  { value: 5, label: 'Friday' },
+  { value: 6, label: 'Saturday' },
+]
+
+const timezoneOptions = [
+  { value: 'America/Mexico_City', label: 'Mexico City (GMT-6)' },
+  { value: 'America/New_York', label: 'New York (GMT-5)' },
+  { value: 'America/Los_Angeles', label: 'Los Angeles (GMT-8)' },
+  { value: 'America/Chicago', label: 'Chicago (GMT-6)' },
+  { value: 'America/Denver', label: 'Denver (GMT-7)' },
+  { value: 'America/Bogota', label: 'Bogotá (GMT-5)' },
+  { value: 'America/Lima', label: 'Lima (GMT-5)' },
+  { value: 'America/Santiago', label: 'Santiago (GMT-4)' },
+  { value: 'America/Buenos_Aires', label: 'Buenos Aires (GMT-3)' },
+  { value: 'America/Sao_Paulo', label: 'São Paulo (GMT-3)' },
+  { value: 'Europe/Madrid', label: 'Madrid (GMT+1)' },
+  { value: 'Europe/London', label: 'London (GMT+0)' },
+  { value: 'UTC', label: 'UTC' },
+]
+
 // Fetch report on mount
 onMounted(async () => {
   const report = await fetchReport(reportId.value)
@@ -527,6 +578,147 @@ function copyShareUrl() {
   }
 }
 
+// Schedule functions
+async function openScheduleModal() {
+  showScheduleModal.value = true
+  isLoadingSchedule.value = true
+
+  try {
+    const response = await $fetch<{
+      success: boolean
+      schedule: any
+    }>(`/api/reports/${reportId.value}/schedule`)
+
+    if (response.schedule) {
+      scheduleSettings.value = {
+        isActive: response.schedule.isActive,
+        frequency: response.schedule.frequency,
+        timezone: response.schedule.timezone,
+        sendTime: response.schedule.sendTime,
+        dayOfWeek: response.schedule.dayOfWeek,
+        dayOfMonth: response.schedule.dayOfMonth,
+        recipients: response.schedule.recipients || [],
+        newRecipient: '',
+        lastSentAt: response.schedule.lastSentAt,
+        nextSendAt: response.schedule.nextSendAt,
+      }
+    }
+    else {
+      // Reset to defaults with client email if available
+      const clientEmail = currentReport.value?.client?.email
+      scheduleSettings.value = {
+        isActive: false,
+        frequency: 'WEEKLY',
+        timezone: 'America/Mexico_City',
+        sendTime: '09:00',
+        dayOfWeek: 1,
+        dayOfMonth: 1,
+        recipients: clientEmail ? [clientEmail] : [],
+        newRecipient: '',
+        lastSentAt: null,
+        nextSendAt: null,
+      }
+    }
+  }
+  catch (e) {
+    console.error('Failed to load schedule:', e)
+  }
+  finally {
+    isLoadingSchedule.value = false
+  }
+}
+
+function addRecipient() {
+  const email = scheduleSettings.value.newRecipient.trim().toLowerCase()
+  if (!email) return
+
+  // Simple email validation
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    alert('Please enter a valid email address')
+    return
+  }
+
+  if (!scheduleSettings.value.recipients.includes(email)) {
+    scheduleSettings.value.recipients.push(email)
+  }
+  scheduleSettings.value.newRecipient = ''
+}
+
+function removeRecipient(email: string) {
+  scheduleSettings.value.recipients = scheduleSettings.value.recipients.filter(r => r !== email)
+}
+
+async function saveSchedule() {
+  if (scheduleSettings.value.recipients.length === 0) {
+    alert('Please add at least one recipient')
+    return
+  }
+
+  isSavingSchedule.value = true
+
+  try {
+    const response = await $fetch<{
+      success: boolean
+      schedule: any
+    }>(`/api/reports/${reportId.value}/schedule`, {
+      method: 'POST',
+      body: {
+        isActive: scheduleSettings.value.isActive,
+        frequency: scheduleSettings.value.frequency,
+        timezone: scheduleSettings.value.timezone,
+        sendTime: scheduleSettings.value.sendTime,
+        dayOfWeek: ['WEEKLY', 'BIWEEKLY'].includes(scheduleSettings.value.frequency)
+          ? scheduleSettings.value.dayOfWeek
+          : null,
+        dayOfMonth: scheduleSettings.value.frequency === 'MONTHLY'
+          ? scheduleSettings.value.dayOfMonth
+          : null,
+        recipients: scheduleSettings.value.recipients,
+      },
+    })
+
+    if (response.success) {
+      scheduleSettings.value.nextSendAt = response.schedule.nextSendAt
+      showScheduleModal.value = false
+      saveMessage.value = 'Schedule saved!'
+      setTimeout(() => saveMessage.value = '', 3000)
+    }
+  }
+  catch (e: any) {
+    alert(e?.data?.message || 'Failed to save schedule')
+  }
+  finally {
+    isSavingSchedule.value = false
+  }
+}
+
+async function deleteSchedule() {
+  if (!confirm('Are you sure you want to delete this schedule?')) return
+
+  try {
+    await $fetch(`/api/reports/${reportId.value}/schedule`, {
+      method: 'DELETE',
+    })
+
+    scheduleSettings.value = {
+      isActive: false,
+      frequency: 'WEEKLY',
+      timezone: 'America/Mexico_City',
+      sendTime: '09:00',
+      dayOfWeek: 1,
+      dayOfMonth: 1,
+      recipients: [],
+      newRecipient: '',
+      lastSentAt: null,
+      nextSendAt: null,
+    }
+    showScheduleModal.value = false
+  }
+  catch (e: any) {
+    alert(e?.data?.message || 'Failed to delete schedule')
+  }
+}
+
 function formatDate(dateString: string) {
   return new Date(dateString).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -728,6 +920,17 @@ function getPreviewChartData(widget: any) {
               class="w-4 h-4 mr-2"
             />
             Share
+          </button>
+
+          <button
+            class="btn-secondary"
+            @click="openScheduleModal"
+          >
+            <Icon
+              name="heroicons:clock"
+              class="w-4 h-4 mr-2"
+            />
+            Schedule
           </button>
 
           <button
@@ -1717,6 +1920,243 @@ function getPreviewChartData(widget: any) {
             {{ shareSettings.isPublic ? 'Save & Get Link' : 'Disable Sharing' }}
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- Schedule Modal -->
+    <div
+      v-if="showScheduleModal"
+      class="fixed inset-0 z-50 flex items-center justify-center"
+    >
+      <!-- Backdrop -->
+      <div
+        class="absolute inset-0 bg-black/50"
+        @click="showScheduleModal = false"
+      />
+
+      <!-- Modal -->
+      <div class="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-semibold text-gray-900">
+            Email Schedule
+          </h3>
+          <button
+            class="p-1 hover:bg-gray-100 rounded"
+            @click="showScheduleModal = false"
+          >
+            <Icon
+              name="heroicons:x-mark"
+              class="w-5 h-5 text-gray-400"
+            />
+          </button>
+        </div>
+
+        <!-- Loading -->
+        <div
+          v-if="isLoadingSchedule"
+          class="flex items-center justify-center py-12"
+        >
+          <Icon
+            name="heroicons:arrow-path"
+            class="w-8 h-8 animate-spin text-gray-400"
+          />
+        </div>
+
+        <template v-else>
+          <div class="space-y-5">
+            <!-- Enable toggle -->
+            <label class="flex items-center justify-between p-4 bg-gray-50 rounded-lg cursor-pointer">
+              <div>
+                <p class="font-medium text-gray-900">Enable email scheduling</p>
+                <p class="text-sm text-gray-500">Automatically send this report via email</p>
+              </div>
+              <input
+                v-model="scheduleSettings.isActive"
+                type="checkbox"
+                class="w-5 h-5 rounded border-gray-300 text-tamarindo-600"
+              >
+            </label>
+
+            <!-- Next send info -->
+            <div
+              v-if="scheduleSettings.nextSendAt"
+              class="p-3 bg-blue-50 border border-blue-200 rounded-lg"
+            >
+              <div class="flex items-center gap-2 text-blue-700">
+                <Icon name="heroicons:clock" class="w-4 h-4" />
+                <span class="text-sm font-medium">Next send: {{ formatDate(scheduleSettings.nextSendAt) }}</span>
+              </div>
+            </div>
+
+            <!-- Frequency -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Frequency</label>
+              <select
+                v-model="scheduleSettings.frequency"
+                class="input"
+              >
+                <option
+                  v-for="opt in frequencyOptions"
+                  :key="opt.value"
+                  :value="opt.value"
+                >
+                  {{ opt.label }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Day of Week (for weekly/biweekly) -->
+            <div v-if="['WEEKLY', 'BIWEEKLY'].includes(scheduleSettings.frequency)">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Day of Week</label>
+              <select
+                v-model="scheduleSettings.dayOfWeek"
+                class="input"
+              >
+                <option
+                  v-for="opt in dayOfWeekOptions"
+                  :key="opt.value"
+                  :value="opt.value"
+                >
+                  {{ opt.label }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Day of Month (for monthly) -->
+            <div v-if="scheduleSettings.frequency === 'MONTHLY'">
+              <label class="block text-sm font-medium text-gray-700 mb-1">Day of Month</label>
+              <select
+                v-model="scheduleSettings.dayOfMonth"
+                class="input"
+              >
+                <option
+                  v-for="day in 28"
+                  :key="day"
+                  :value="day"
+                >
+                  {{ day }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Time -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Send Time</label>
+              <input
+                v-model="scheduleSettings.sendTime"
+                type="time"
+                class="input"
+              >
+            </div>
+
+            <!-- Timezone -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Timezone</label>
+              <select
+                v-model="scheduleSettings.timezone"
+                class="input"
+              >
+                <option
+                  v-for="tz in timezoneOptions"
+                  :key="tz.value"
+                  :value="tz.value"
+                >
+                  {{ tz.label }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Recipients -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Recipients</label>
+              <div class="flex gap-2 mb-2">
+                <input
+                  v-model="scheduleSettings.newRecipient"
+                  type="email"
+                  class="input flex-1"
+                  placeholder="email@example.com"
+                  @keyup.enter="addRecipient"
+                >
+                <button
+                  type="button"
+                  class="btn-secondary px-3"
+                  @click="addRecipient"
+                >
+                  <Icon name="heroicons:plus" class="w-4 h-4" />
+                </button>
+              </div>
+
+              <!-- Recipient list -->
+              <div
+                v-if="scheduleSettings.recipients.length > 0"
+                class="space-y-1"
+              >
+                <div
+                  v-for="email in scheduleSettings.recipients"
+                  :key="email"
+                  class="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                >
+                  <div class="flex items-center gap-2">
+                    <Icon name="heroicons:envelope" class="w-4 h-4 text-gray-400" />
+                    <span class="text-sm text-gray-700">{{ email }}</span>
+                  </div>
+                  <button
+                    type="button"
+                    class="p-1 hover:bg-gray-200 rounded"
+                    @click="removeRecipient(email)"
+                  >
+                    <Icon name="heroicons:x-mark" class="w-4 h-4 text-gray-400" />
+                  </button>
+                </div>
+              </div>
+              <p
+                v-else
+                class="text-sm text-gray-500 text-center py-4"
+              >
+                No recipients added yet
+              </p>
+            </div>
+
+            <!-- Last sent info -->
+            <div
+              v-if="scheduleSettings.lastSentAt"
+              class="text-sm text-gray-500"
+            >
+              Last sent: {{ formatDate(scheduleSettings.lastSentAt) }}
+            </div>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex gap-3 mt-6 pt-4 border-t border-gray-200">
+            <button
+              v-if="scheduleSettings.nextSendAt"
+              type="button"
+              class="text-red-600 hover:text-red-700 text-sm font-medium"
+              @click="deleteSchedule"
+            >
+              Delete Schedule
+            </button>
+            <div class="flex-1" />
+            <button
+              class="btn-secondary"
+              @click="showScheduleModal = false"
+            >
+              Cancel
+            </button>
+            <button
+              class="btn-primary"
+              :disabled="isSavingSchedule || scheduleSettings.recipients.length === 0"
+              @click="saveSchedule"
+            >
+              <Icon
+                v-if="isSavingSchedule"
+                name="heroicons:arrow-path"
+                class="w-4 h-4 mr-2 animate-spin"
+              />
+              Save Schedule
+            </button>
+          </div>
+        </template>
       </div>
     </div>
   </div>
