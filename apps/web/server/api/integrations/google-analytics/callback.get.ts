@@ -113,8 +113,10 @@ export default defineEventHandler(async (event) => {
       where: { id: existingDataSource.id },
       data: {
         credentials: encryptedCredentials,
+        status: 'ACTIVE',
         lastSyncAt: null,
         syncError: null,
+        authError: null,
         isActive: true,
       },
     })
@@ -128,6 +130,7 @@ export default defineEventHandler(async (event) => {
         type: 'GOOGLE_ANALYTICS',
         tenantId: stateData.tenantId,
         credentials: encryptedCredentials,
+        status: 'ACTIVE',
         isActive: true,
       },
     })
