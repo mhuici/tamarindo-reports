@@ -1,14 +1,33 @@
 import { computed, readonly } from 'vue'
 import { useState } from '#imports'
 
+type DataSourceType = 'GOOGLE_ADS' | 'FACEBOOK_ADS' | 'GOOGLE_ANALYTICS' | 'TIKTOK_ADS' | 'LINKEDIN_ADS'
+type DataSourceStatus = 'ACTIVE' | 'SYNCING' | 'ERROR' | 'NEEDS_REAUTH'
+
+interface PlatformAccount {
+  id: string
+  platformId: string
+  name: string
+  currency: string | null
+  timezone: string | null
+  isActive: boolean
+  lastSyncAt: string | null
+  assignedClientsCount: number
+  assignedClients: Array<{ id: string; name: string }>
+}
+
 interface DataSource {
   id: string
   name: string
-  type: 'GOOGLE_ADS' | 'FACEBOOK_ADS' | 'GOOGLE_ANALYTICS' | 'TIKTOK_ADS' | 'LINKEDIN_ADS'
-  status: 'ACTIVE' | 'INACTIVE' | 'ERROR'
-  lastSync: string | null
+  type: DataSourceType
+  status: DataSourceStatus
+  isActive: boolean
+  lastSyncAt: string | null
+  syncError: string | null
+  authError: string | null
   createdAt: string
   accountsCount: number
+  platformAccounts?: PlatformAccount[]
 }
 
 interface Integration {
@@ -70,7 +89,15 @@ export function useIntegrations() {
       let status: Integration['status'] = 'not_connected'
 
       if (dataSource) {
-        status = dataSource.status === 'ACTIVE' ? 'connected' : 'error'
+        if (dataSource.status === 'NEEDS_REAUTH') {
+          status = 'error' // Show as error, needs reconnection
+        }
+        else if (dataSource.status === 'ERROR') {
+          status = 'error'
+        }
+        else {
+          status = 'connected'
+        }
       }
       else if (!integration.connectUrl) {
         status = 'coming_soon'
@@ -87,11 +114,12 @@ export function useIntegrations() {
   /**
    * Fetch data sources from API
    */
-  async function fetchDataSources(): Promise<DataSource[]> {
+  async function fetchDataSources(includeAccounts = false): Promise<DataSource[]> {
     isLoading.value = true
 
     try {
-      const response = await $fetch<{ dataSources: DataSource[] }>('/api/integrations')
+      const url = includeAccounts ? '/api/integrations?includeAccounts=true' : '/api/integrations'
+      const response = await $fetch<{ dataSources: DataSource[] }>(url)
       dataSources.value = response.dataSources
       return dataSources.value
     }
@@ -101,6 +129,29 @@ export function useIntegrations() {
     }
     finally {
       isLoading.value = false
+    }
+  }
+
+  /**
+   * Sync accounts for a data source
+   */
+  async function syncAccounts(dataSourceId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await $fetch<{
+        success: boolean
+        accountsFound: number
+        accountsSynced: number
+      }>(`/api/integrations/${dataSourceId}/sync`, {
+        method: 'POST',
+      })
+
+      // Refresh data sources to get updated accounts
+      await fetchDataSources(true)
+
+      return { success: true }
+    }
+    catch (e: any) {
+      return { success: false, error: e?.data?.message || 'Sync failed' }
     }
   }
 
@@ -135,6 +186,7 @@ export function useIntegrations() {
     dataSources: readonly(dataSources),
     isLoading: readonly(isLoading),
     fetchDataSources,
+    syncAccounts,
     connect,
     disconnect,
   }

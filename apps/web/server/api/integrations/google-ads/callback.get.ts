@@ -104,29 +104,41 @@ export default defineEventHandler(async (event) => {
     scope: tokenData.scope,
   }))
 
+  let dataSourceId: string
+
   if (existingDataSource) {
     // Update existing data source
     await prisma.dataSource.update({
       where: { id: existingDataSource.id },
       data: {
         credentials: encryptedCredentials,
-        lastSyncAt: null,
+        status: 'ACTIVE',
+        authError: null,
+        syncError: null,
         isActive: true,
       },
     })
+    dataSourceId = existingDataSource.id
   }
   else {
     // Create new data source
-    await prisma.dataSource.create({
+    const newDataSource = await prisma.dataSource.create({
       data: {
         name: googleUserInfo.email || 'Google Ads',
         type: 'GOOGLE_ADS',
         tenantId: stateData.tenantId,
         credentials: encryptedCredentials,
+        status: 'ACTIVE',
         isActive: true,
       },
     })
+    dataSourceId = newDataSource.id
   }
+
+  // Trigger async account sync (don't wait for it)
+  import('../../../utils/integrations/sync-accounts').then(({ syncPlatformAccounts }) => {
+    syncPlatformAccounts(dataSourceId).catch(console.error)
+  })
 
   // Redirect back to integrations page with success
   return sendRedirect(event, `/${tenant.slug}/integrations?connected=google-ads`)

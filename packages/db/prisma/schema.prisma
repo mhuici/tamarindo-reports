@@ -133,17 +133,26 @@ model Client {
   @@index([tenantId])
 }
 
+enum DataSourceStatus {
+  ACTIVE        // Working normally
+  SYNCING       // Currently syncing
+  ERROR         // Sync error (temporary)
+  NEEDS_REAUTH  // Token expired/revoked - user action required
+}
+
 model DataSource {
-  id          String         @id @default(cuid())
+  id          String           @id @default(cuid())
   type        DataSourceType
-  name        String         // User-friendly name
-  credentials Json           // Encrypted OAuth tokens
-  metadata    Json?          // Platform-specific metadata
+  name        String           // User-friendly name
+  credentials Json             // Encrypted OAuth tokens (access_token, refresh_token, expires_at)
+  metadata    Json?            // Platform-specific metadata
+  status      DataSourceStatus @default(ACTIVE)
   lastSyncAt  DateTime?
-  syncError   String?
-  isActive    Boolean        @default(true)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  syncError   String?          // Last sync error message
+  authError   String?          // Auth error (needs user attention)
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 
   // Tenant relation
   tenantId String
@@ -154,15 +163,19 @@ model DataSource {
 
   @@index([tenantId])
   @@index([type])
+  @@index([status])
 }
 
 model PlatformAccount {
   id               String   @id @default(cuid())
-  platformId       String   // External ID from Google/Facebook
+  platformId       String   // External ID from Google/Facebook (e.g., "123-456-7890" for Google Ads)
   name             String
-  currency         String?
-  timezone         String?
-  metadata         Json?
+  currency         String?  // ISO 4217 currency code (USD, EUR, MXN)
+  timezone         String?  // IANA timezone (America/Mexico_City)
+  isActive         Boolean  @default(true)
+  metadata         Json?    // Platform-specific data (manager account, descriptive name, etc.)
+  lastSyncAt       DateTime?
+  lastHealingSyncAt DateTime? // Last time we re-synced recent data for corrections
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -178,6 +191,7 @@ model PlatformAccount {
 
   @@unique([dataSourceId, platformId])
   @@index([dataSourceId])
+  @@index([isActive])
 }
 
 // Links clients to platform accounts
@@ -202,7 +216,8 @@ model ClientAccount {
 model Metric {
   id        String   @id @default(cuid())
   date      DateTime @db.Date
-  data      Json     // { impressions, clicks, cost, conversions, ... }
+  data      Json     // { impressions, clicks, cost, conversions, ctr, cpc, ... }
+  syncedAt  DateTime @default(now()) // When this data was last fetched (for healing sync)
   createdAt DateTime @default(now())
 
   // Platform account relation
@@ -211,6 +226,7 @@ model Metric {
 
   @@unique([platformAccountId, date])
   @@index([platformAccountId, date])
+  @@index([syncedAt])
 }
 
 // ============================================

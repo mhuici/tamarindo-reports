@@ -302,14 +302,17 @@ function formatDate(dateString: string) {
             class="hover:bg-gray-50"
           >
             <td class="px-6 py-4 whitespace-nowrap">
-              <div class="flex items-center">
+              <NuxtLink
+                :to="`/${tenant}/clients/${client.id}`"
+                class="flex items-center"
+              >
                 <div class="w-10 h-10 rounded-full bg-tamarindo-100 flex items-center justify-center">
                   <span class="text-sm font-medium text-tamarindo-700">
                     {{ client.name.charAt(0).toUpperCase() }}
                   </span>
                 </div>
                 <div class="ml-4">
-                  <div class="font-medium text-gray-900">
+                  <div class="font-medium text-gray-900 hover:text-tamarindo-600">
                     {{ client.name }}
                   </div>
                   <div
@@ -319,7 +322,7 @@ function formatDate(dateString: string) {
                     {{ client.email }}
                   </div>
                 </div>
-              </div>
+              </NuxtLink>
             </td>
             <td class="px-6 py-4 whitespace-nowrap">
               <div class="flex items-center gap-2">
@@ -373,6 +376,16 @@ function formatDate(dateString: string) {
               </span>
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-right text-sm space-x-2">
+              <NuxtLink
+                :to="`/${tenant}/clients/${client.id}`"
+                class="text-tamarindo-600 hover:text-tamarindo-900"
+                title="View"
+              >
+                <Icon
+                  name="heroicons:eye"
+                  class="w-5 h-5"
+                />
+              </NuxtLink>
               <button
                 class="text-gray-600 hover:text-gray-900"
                 title="Edit"

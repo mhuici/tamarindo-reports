@@ -90,11 +90,11 @@ export default defineEventHandler(async (event) => {
     },
   })
 
-  // Facebook tokens don't have refresh tokens by default
-  // We get a long-lived token that expires in ~60 days
+  // Facebook tokens - store with expiry info for refresh
   const encryptedCredentials = encrypt(JSON.stringify({
     accessToken: tokenData.access_token,
-    expiresIn: tokenData.expires_in,
+    refreshToken: tokenData.access_token, // Facebook uses same token for refresh
+    expiresAt: Date.now() + (tokenData.expires_in * 1000),
     tokenType: tokenData.token_type,
     userId: fbUserInfo.id,
   }))
@@ -108,7 +108,9 @@ export default defineEventHandler(async (event) => {
       data: {
         name: fbUserInfo.name || fbUserInfo.email || 'Facebook Ads',
         credentials: encryptedCredentials,
-        lastSyncAt: null,
+        status: 'ACTIVE',
+        authError: null,
+        syncError: null,
         isActive: true,
       },
     })
@@ -122,66 +124,17 @@ export default defineEventHandler(async (event) => {
         type: 'FACEBOOK_ADS',
         tenantId: stateData.tenantId,
         credentials: encryptedCredentials,
+        status: 'ACTIVE',
         isActive: true,
       },
     })
     dataSourceId = newDataSource.id
   }
 
-  // Fetch Ad Accounts from Facebook and create PlatformAccounts
-  try {
-    const adAccountsResponse = await fetch(
-      `${FACEBOOK_AD_ACCOUNTS_URL}?fields=id,name,currency,timezone_name&access_token=${tokenData.access_token}`,
-    )
-
-    if (adAccountsResponse.ok) {
-      const adAccountsData = await adAccountsResponse.json()
-      const adAccounts = adAccountsData.data || []
-
-      console.log(`[Facebook] Found ${adAccounts.length} ad accounts`)
-
-      for (const account of adAccounts) {
-        // Check if PlatformAccount already exists
-        const existingAccount = await prisma.platformAccount.findFirst({
-          where: {
-            dataSourceId,
-            platformId: account.id,
-          },
-        })
-
-        if (existingAccount) {
-          // Update existing account
-          await prisma.platformAccount.update({
-            where: { id: existingAccount.id },
-            data: {
-              name: account.name || `Account ${account.id}`,
-              currency: account.currency || 'USD',
-              timezone: account.timezone_name || 'UTC',
-            },
-          })
-        }
-        else {
-          // Create new PlatformAccount
-          await prisma.platformAccount.create({
-            data: {
-              dataSourceId,
-              platformId: account.id,
-              name: account.name || `Account ${account.id}`,
-              currency: account.currency || 'USD',
-              timezone: account.timezone_name || 'UTC',
-            },
-          })
-        }
-      }
-    }
-    else {
-      console.error('[Facebook] Failed to fetch ad accounts:', await adAccountsResponse.text())
-    }
-  }
-  catch (error) {
-    console.error('[Facebook] Error fetching ad accounts:', error)
-    // Don't fail the whole flow, just log the error
-  }
+  // Trigger async account sync (don't wait for it)
+  import('../../../utils/integrations/sync-accounts').then(({ syncPlatformAccounts }) => {
+    syncPlatformAccounts(dataSourceId).catch(console.error)
+  })
 
   // Redirect back to integrations page with success
   return sendRedirect(event, `/${tenant.slug}/integrations?connected=facebook-ads`)

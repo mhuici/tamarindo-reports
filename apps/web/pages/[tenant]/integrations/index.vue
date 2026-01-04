@@ -6,7 +6,7 @@ definePageMeta({
 })
 
 const route = useRoute()
-const { integrations, isLoading, fetchDataSources, connect, disconnect } = useIntegrations()
+const { integrations, isLoading, fetchDataSources, syncAccounts, connect, disconnect } = useIntegrations()
 
 // Check for success/error from OAuth callback
 const connectedParam = route.query.connected as string
@@ -14,9 +14,11 @@ const errorParam = route.query.error as string
 
 const successMessage = ref('')
 const errorMessage = ref('')
+const syncingIntegration = ref<string | null>(null)
+const expandedIntegration = ref<string | null>(null)
 
 if (connectedParam) {
-  successMessage.value = `Successfully connected ${connectedParam.replace('-', ' ')}!`
+  successMessage.value = `Successfully connected ${connectedParam.replace('-', ' ')}! Syncing accounts...`
   // Clean URL
   navigateTo(route.path, { replace: true })
 }
@@ -28,25 +30,45 @@ if (errorParam) {
   navigateTo(route.path, { replace: true })
 }
 
-// Fetch data sources on mount
+// Fetch data sources with accounts on mount
 onMounted(() => {
-  fetchDataSources()
+  fetchDataSources(true)
 })
+
+async function handleSync(integration: any) {
+  if (!integration.dataSource) return
+
+  syncingIntegration.value = integration.id
+  const result = await syncAccounts(integration.dataSource.id)
+
+  if (result.success) {
+    successMessage.value = `${integration.name} accounts synced successfully.`
+  }
+  else {
+    errorMessage.value = result.error || 'Failed to sync accounts.'
+  }
+  syncingIntegration.value = null
+}
 
 async function handleDisconnect(integration: any) {
   if (!integration.dataSource) return
 
-  if (!confirm(`Are you sure you want to disconnect ${integration.name}?`)) {
+  if (!confirm(`Are you sure you want to disconnect ${integration.name}? This will remove all linked accounts.`)) {
     return
   }
 
   const result = await disconnect(integration.dataSource.id)
   if (result.success) {
     successMessage.value = `${integration.name} disconnected successfully.`
+    expandedIntegration.value = null
   }
   else {
     errorMessage.value = result.error || 'Failed to disconnect.'
   }
+}
+
+function toggleExpanded(integrationId: string) {
+  expandedIntegration.value = expandedIntegration.value === integrationId ? null : integrationId
 }
 
 function formatDate(dateString: string | null) {
@@ -58,6 +80,49 @@ function formatDate(dateString: string | null) {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function formatRelativeTime(dateString: string | null) {
+  if (!dateString) return 'Never synced'
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMins / 60)
+  const diffDays = Math.floor(diffHours / 24)
+
+  if (diffMins < 1) return 'Just now'
+  if (diffMins < 60) return `${diffMins}m ago`
+  if (diffHours < 24) return `${diffHours}h ago`
+  return `${diffDays}d ago`
+}
+
+function getStatusBadge(status: string) {
+  switch (status) {
+    case 'connected':
+      return { class: 'badge-success', text: 'Connected' }
+    case 'error':
+      return { class: 'badge-error', text: 'Needs Attention' }
+    case 'coming_soon':
+      return { class: 'badge-info', text: 'Coming Soon' }
+    default:
+      return null
+  }
+}
+
+function getDataSourceStatusBadge(status: string) {
+  switch (status) {
+    case 'ACTIVE':
+      return { class: 'bg-green-100 text-green-700', text: 'Active', icon: 'heroicons:check-circle' }
+    case 'SYNCING':
+      return { class: 'bg-blue-100 text-blue-700', text: 'Syncing', icon: 'heroicons:arrow-path' }
+    case 'ERROR':
+      return { class: 'bg-red-100 text-red-700', text: 'Sync Error', icon: 'heroicons:exclamation-triangle' }
+    case 'NEEDS_REAUTH':
+      return { class: 'bg-amber-100 text-amber-700', text: 'Reconnect Required', icon: 'heroicons:key' }
+    default:
+      return { class: 'bg-gray-100 text-gray-700', text: status, icon: 'heroicons:question-mark-circle' }
+  }
 }
 </script>
 
@@ -126,7 +191,7 @@ function formatDate(dateString: string | null) {
     <!-- Loading state -->
     <div
       v-if="isLoading"
-      class="grid grid-cols-1 md:grid-cols-2 gap-6"
+      class="grid grid-cols-1 lg:grid-cols-2 gap-6"
     >
       <div
         v-for="n in 4"
@@ -146,114 +211,239 @@ function formatDate(dateString: string | null) {
     <!-- Integrations grid -->
     <div
       v-else
-      class="grid grid-cols-1 md:grid-cols-2 gap-6"
+      class="grid grid-cols-1 lg:grid-cols-2 gap-6"
     >
       <div
         v-for="integration in integrations"
         :key="integration.id"
-        class="card card-body"
+        class="card overflow-hidden"
       >
-        <div class="flex items-start gap-4">
-          <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
-            <Icon
-              :name="integration.icon"
-              class="w-8 h-8"
-            />
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2">
-              <h3 class="font-semibold text-gray-900">
-                {{ integration.name }}
-              </h3>
-              <span
-                v-if="integration.status === 'connected'"
-                class="badge badge-success"
-              >
-                Connected
-              </span>
-              <span
-                v-else-if="integration.status === 'error'"
-                class="badge badge-error"
-              >
-                Error
-              </span>
-              <span
-                v-else-if="integration.status === 'coming_soon'"
-                class="badge badge-info"
-              >
-                Coming Soon
-              </span>
+        <!-- Integration Header -->
+        <div class="card-body">
+          <div class="flex items-start gap-4">
+            <div class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center flex-shrink-0">
+              <Icon
+                :name="integration.icon"
+                class="w-8 h-8"
+              />
             </div>
-            <p class="text-sm text-gray-500 mt-1">
-              {{ integration.description }}
-            </p>
-            <div
-              v-if="integration.dataSource"
-              class="mt-3 text-xs text-gray-500 space-y-1"
-            >
-              <p>
-                <span class="font-medium">Account:</span> {{ integration.dataSource.name }}
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 flex-wrap">
+                <h3 class="font-semibold text-gray-900">
+                  {{ integration.name }}
+                </h3>
+                <span
+                  v-if="getStatusBadge(integration.status)"
+                  :class="['badge', getStatusBadge(integration.status)!.class]"
+                >
+                  {{ getStatusBadge(integration.status)!.text }}
+                </span>
+              </div>
+              <p class="text-sm text-gray-500 mt-1">
+                {{ integration.description }}
               </p>
-              <p>
-                <span class="font-medium">Last sync:</span> {{ formatDate(integration.dataSource.lastSync) }}
-              </p>
+
+              <!-- Connected data source info -->
+              <template v-if="integration.dataSource">
+                <div class="mt-3 flex items-center gap-4 text-xs">
+                  <!-- Status badge -->
+                  <span
+                    :class="['inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium', getDataSourceStatusBadge(integration.dataSource.status).class]"
+                  >
+                    <Icon
+                      :name="getDataSourceStatusBadge(integration.dataSource.status).icon"
+                      class="w-3 h-3"
+                      :class="{ 'animate-spin': integration.dataSource.status === 'SYNCING' }"
+                    />
+                    {{ getDataSourceStatusBadge(integration.dataSource.status).text }}
+                  </span>
+
+                  <!-- Accounts count -->
+                  <span class="text-gray-500">
+                    <Icon name="heroicons:building-office-2" class="w-3 h-3 inline mr-1" />
+                    {{ integration.dataSource.accountsCount }} account{{ integration.dataSource.accountsCount !== 1 ? 's' : '' }}
+                  </span>
+
+                  <!-- Last sync -->
+                  <span class="text-gray-500">
+                    <Icon name="heroicons:clock" class="w-3 h-3 inline mr-1" />
+                    {{ formatRelativeTime(integration.dataSource.lastSyncAt) }}
+                  </span>
+                </div>
+
+                <!-- Auth error message -->
+                <div
+                  v-if="integration.dataSource.authError"
+                  class="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700"
+                >
+                  <Icon name="heroicons:exclamation-triangle" class="w-3 h-3 inline mr-1" />
+                  {{ integration.dataSource.authError }}
+                </div>
+
+                <!-- Sync error message -->
+                <div
+                  v-if="integration.dataSource.syncError && integration.dataSource.status === 'ERROR'"
+                  class="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700"
+                >
+                  <Icon name="heroicons:exclamation-circle" class="w-3 h-3 inline mr-1" />
+                  {{ integration.dataSource.syncError }}
+                </div>
+              </template>
             </div>
           </div>
         </div>
 
-        <div class="mt-4 pt-4 border-t border-gray-200 flex justify-end gap-3">
-          <template v-if="integration.status === 'connected'">
+        <!-- Action buttons -->
+        <div class="px-6 py-3 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+          <div>
+            <!-- Toggle accounts button -->
             <button
-              class="btn-outline text-sm text-red-600 border-red-300 hover:bg-red-50"
-              @click="handleDisconnect(integration)"
-            >
-              Disconnect
-            </button>
-            <button
-              class="btn-primary text-sm"
-              @click="connect(integration)"
+              v-if="integration.dataSource && integration.dataSource.accountsCount > 0"
+              class="text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1"
+              @click="toggleExpanded(integration.id)"
             >
               <Icon
-                name="heroicons:arrow-path"
-                class="w-4 h-4 mr-1"
+                :name="expandedIntegration === integration.id ? 'heroicons:chevron-up' : 'heroicons:chevron-down'"
+                class="w-4 h-4"
               />
-              Reconnect
+              {{ expandedIntegration === integration.id ? 'Hide' : 'Show' }} accounts
             </button>
-          </template>
-          <template v-else-if="integration.status === 'error'">
-            <button
-              class="btn-outline text-sm text-red-600 border-red-300 hover:bg-red-50"
-              @click="handleDisconnect(integration)"
+          </div>
+
+          <div class="flex gap-2">
+            <template v-if="integration.status === 'connected'">
+              <button
+                class="btn-outline text-sm text-red-600 border-red-300 hover:bg-red-50"
+                @click="handleDisconnect(integration)"
+              >
+                Disconnect
+              </button>
+              <button
+                class="btn-outline text-sm"
+                :disabled="syncingIntegration === integration.id"
+                @click="handleSync(integration)"
+              >
+                <Icon
+                  name="heroicons:arrow-path"
+                  class="w-4 h-4 mr-1"
+                  :class="{ 'animate-spin': syncingIntegration === integration.id }"
+                />
+                {{ syncingIntegration === integration.id ? 'Syncing...' : 'Sync' }}
+              </button>
+            </template>
+            <template v-else-if="integration.status === 'error'">
+              <button
+                class="btn-outline text-sm text-red-600 border-red-300 hover:bg-red-50"
+                @click="handleDisconnect(integration)"
+              >
+                Remove
+              </button>
+              <button
+                class="btn-primary text-sm"
+                @click="connect(integration)"
+              >
+                <Icon name="heroicons:key" class="w-4 h-4 mr-1" />
+                Reconnect
+              </button>
+            </template>
+            <template v-else-if="integration.status === 'not_connected'">
+              <button
+                class="btn-primary text-sm"
+                @click="connect(integration)"
+              >
+                <Icon
+                  name="heroicons:link"
+                  class="w-4 h-4 mr-1"
+                />
+                Connect
+              </button>
+            </template>
+            <template v-else>
+              <button
+                disabled
+                class="btn-secondary text-sm opacity-50 cursor-not-allowed"
+              >
+                Coming Soon
+              </button>
+            </template>
+          </div>
+        </div>
+
+        <!-- Expanded accounts list -->
+        <div
+          v-if="expandedIntegration === integration.id && integration.dataSource?.platformAccounts"
+          class="border-t border-gray-200"
+        >
+          <div class="divide-y divide-gray-100">
+            <div
+              v-for="account in integration.dataSource.platformAccounts"
+              :key="account.id"
+              class="px-6 py-3 hover:bg-gray-50"
             >
-              Remove
-            </button>
-            <button
-              class="btn-primary text-sm"
-              @click="connect(integration)"
-            >
-              Reconnect
-            </button>
-          </template>
-          <template v-else-if="integration.status === 'not_connected'">
-            <button
-              class="btn-primary text-sm"
-              @click="connect(integration)"
-            >
-              <Icon
-                name="heroicons:link"
-                class="w-4 h-4 mr-1"
-              />
-              Connect
-            </button>
-          </template>
-          <template v-else>
-            <button
-              disabled
-              class="btn-secondary text-sm opacity-50 cursor-not-allowed"
-            >
-              Coming Soon
-            </button>
-          </template>
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="font-medium text-sm text-gray-900">
+                    {{ account.name }}
+                  </p>
+                  <p class="text-xs text-gray-500 mt-0.5">
+                    ID: {{ account.platformId }}
+                    <span v-if="account.currency" class="ml-2">{{ account.currency }}</span>
+                    <span v-if="account.timezone" class="ml-2">{{ account.timezone }}</span>
+                  </p>
+                </div>
+                <div class="flex items-center gap-3">
+                  <!-- Active status -->
+                  <span
+                    :class="[
+                      'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
+                      account.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                    ]"
+                  >
+                    {{ account.isActive ? 'Active' : 'Inactive' }}
+                  </span>
+
+                  <!-- Assigned clients count -->
+                  <span
+                    v-if="account.assignedClientsCount > 0"
+                    class="text-xs text-gray-500"
+                    :title="account.assignedClients.map((c: any) => c.name).join(', ')"
+                  >
+                    <Icon name="heroicons:users" class="w-3 h-3 inline mr-1" />
+                    {{ account.assignedClientsCount }} client{{ account.assignedClientsCount !== 1 ? 's' : '' }}
+                  </span>
+                  <span
+                    v-else
+                    class="text-xs text-amber-500"
+                  >
+                    <Icon name="heroicons:exclamation-circle" class="w-3 h-3 inline mr-1" />
+                    Not assigned
+                  </span>
+                </div>
+              </div>
+
+              <!-- Assigned clients list -->
+              <div
+                v-if="account.assignedClients && account.assignedClients.length > 0"
+                class="mt-2 flex flex-wrap gap-1"
+              >
+                <span
+                  v-for="client in account.assignedClients"
+                  :key="client.id"
+                  class="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-tamarindo-50 text-tamarindo-700"
+                >
+                  {{ client.name }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Accounts help text -->
+          <div class="px-6 py-3 bg-blue-50 border-t border-blue-100">
+            <p class="text-xs text-blue-700">
+              <Icon name="heroicons:information-circle" class="w-3 h-3 inline mr-1" />
+              Assign accounts to clients from the client detail page to start pulling their data.
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -276,7 +466,7 @@ function formatDate(dateString: string | null) {
           </p>
           <ul class="text-sm text-amber-700 mt-2 list-disc list-inside space-y-1">
             <li>
-              <code class="bg-amber-100 px-1 rounded">GOOGLE_CLIENT_ID</code> and <code class="bg-amber-100 px-1 rounded">GOOGLE_CLIENT_SECRET</code> for Google Ads
+              <code class="bg-amber-100 px-1 rounded">GOOGLE_CLIENT_ID</code> and <code class="bg-amber-100 px-1 rounded">GOOGLE_CLIENT_SECRET</code> for Google Ads & Analytics
             </li>
             <li>
               <code class="bg-amber-100 px-1 rounded">FACEBOOK_APP_ID</code> and <code class="bg-amber-100 px-1 rounded">FACEBOOK_APP_SECRET</code> for Facebook Ads
@@ -297,19 +487,14 @@ function formatDate(dateString: string | null) {
         </div>
         <div>
           <h3 class="font-semibold text-gray-900">
-            Need help connecting?
+            How integrations work
           </h3>
-          <p class="text-sm text-gray-600 mt-1">
-            Check out our integration guides or contact support for assistance.
-          </p>
-          <div class="mt-3 flex gap-3">
-            <button class="text-sm text-tamarindo-600 hover:text-tamarindo-500 font-medium">
-              View Guides
-            </button>
-            <button class="text-sm text-tamarindo-600 hover:text-tamarindo-500 font-medium">
-              Contact Support
-            </button>
-          </div>
+          <ol class="text-sm text-gray-600 mt-2 space-y-1 list-decimal list-inside">
+            <li>Connect your ad platform account using OAuth</li>
+            <li>We'll automatically sync your ad accounts</li>
+            <li>Assign accounts to clients from client detail pages</li>
+            <li>Data flows into your reports automatically</li>
+          </ol>
         </div>
       </div>
     </div>
