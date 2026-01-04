@@ -1,6 +1,18 @@
 import { Resend } from 'resend'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazy-load Resend client to avoid startup crash if API key is missing
+let resendClient: Resend | null = null
+
+function getResendClient(): Resend {
+  if (!resendClient) {
+    const apiKey = process.env.RESEND_API_KEY
+    if (!apiKey) {
+      throw new Error('RESEND_API_KEY environment variable is not set. Email functionality is disabled.')
+    }
+    resendClient = new Resend(apiKey)
+  }
+  return resendClient
+}
 
 interface SendReportEmailOptions {
   to: string[]
@@ -119,6 +131,7 @@ Powered by TamarindoReports
 `
 
   try {
+    const resend = getResendClient()
     const result = await resend.emails.send({
       from: fromAddress,
       to,
