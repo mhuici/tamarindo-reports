@@ -22,14 +22,32 @@ const props = withDefaults(defineProps<Props>(), {
 // Placeholder chart rendering - in production, integrate with Chart.js
 const maxValue = computed(() => {
   if (!props.data.length) return 100
-  return Math.max(...props.data.map(d => d.value))
+  const values = props.data.map(d => d.value).filter(v => typeof v === 'number' && !isNaN(v))
+  if (values.length === 0) return 100
+  return Math.max(...values) || 100
 })
 
 const normalizedData = computed(() => {
   return props.data.map(d => ({
     ...d,
-    height: (d.value / maxValue.value) * 100,
+    height: maxValue.value > 0 ? Math.max(0, Math.min(100, (d.value / maxValue.value) * 100)) : 0,
   }))
+})
+
+// Safe line chart points - prevent NaN
+const lineChartPoints = computed(() => {
+  if (normalizedData.value.length === 0) return ''
+  const len = normalizedData.value.length
+  return normalizedData.value.map((d, i) => {
+    const x = len > 1 ? (i / (len - 1)) * 100 : 50
+    const y = 40 - (d.height / 100 * 40)
+    return `${isNaN(x) ? 0 : x},${isNaN(y) ? 20 : y}`
+  }).join(' ')
+})
+
+const areaChartPoints = computed(() => {
+  if (!lineChartPoints.value) return ''
+  return `0,40 ${lineChartPoints.value} 100,40`
 })
 </script>
 
@@ -99,11 +117,11 @@ const normalizedData = computed(() => {
             fill="none"
             stroke="#f97316"
             stroke-width="2"
-            :points="normalizedData.map((d, i) => `${(i / (normalizedData.length - 1 || 1)) * 100},${40 - (d.height / 100 * 40)}`).join(' ')"
+            :points="lineChartPoints"
           />
           <polyline
             fill="url(#gradient)"
-            :points="`0,40 ${normalizedData.map((d, i) => `${(i / (normalizedData.length - 1 || 1)) * 100},${40 - (d.height / 100 * 40)}`).join(' ')} 100,40`"
+            :points="areaChartPoints"
           />
           <defs>
             <linearGradient

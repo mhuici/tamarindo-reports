@@ -50,24 +50,32 @@ const chartHeight = computed(() => props.height)
 const innerWidth = chartWidth - chartPadding.left - chartPadding.right
 const innerHeight = computed(() => chartHeight.value - chartPadding.top - chartPadding.bottom)
 
+// Check if data is valid for rendering
+const hasValidData = computed(() => {
+  if (!props.data) return false
+  return props.data.historical.length > 0 || props.data.predictions.length > 0
+})
+
 // Scale values to chart coordinates
 const maxValue = computed(() => {
-  if (!props.data) return 100
+  if (!props.data || !hasValidData.value) return 100
   const allValues = [
     ...props.data.historical.map(p => p.value),
     ...props.data.predictions.map(p => p.value),
-    ...props.data.confidence.upper95,
-  ]
-  return Math.max(...allValues) * 1.1
+    ...(props.data.confidence?.upper95 || []),
+  ].filter(v => typeof v === 'number' && !isNaN(v))
+  if (allValues.length === 0) return 100
+  return Math.max(...allValues) * 1.1 || 100
 })
 
 const minValue = computed(() => {
-  if (!props.data) return 0
+  if (!props.data || !hasValidData.value) return 0
   const allValues = [
     ...props.data.historical.map(p => p.value),
     ...props.data.predictions.map(p => p.value),
-    ...props.data.confidence.lower95,
-  ]
+    ...(props.data.confidence?.lower95 || []),
+  ].filter(v => typeof v === 'number' && !isNaN(v))
+  if (allValues.length === 0) return 0
   return Math.min(0, Math.min(...allValues) * 0.9)
 })
 
@@ -78,9 +86,11 @@ function scaleX(index: number): number {
 }
 
 function scaleY(value: number): number {
+  if (typeof value !== 'number' || isNaN(value)) return chartPadding.top + innerHeight.value / 2
   const range = maxValue.value - minValue.value
-  if (range === 0) return chartPadding.top + innerHeight.value / 2
-  return chartPadding.top + innerHeight.value - ((value - minValue.value) / range) * innerHeight.value
+  if (range === 0 || isNaN(range)) return chartPadding.top + innerHeight.value / 2
+  const result = chartPadding.top + innerHeight.value - ((value - minValue.value) / range) * innerHeight.value
+  return isNaN(result) ? chartPadding.top + innerHeight.value / 2 : result
 }
 
 // Generate SVG path for line
@@ -236,7 +246,7 @@ const trendIcon = computed(() => {
 
       <!-- No data -->
       <div
-        v-else-if="!data"
+        v-else-if="!data || !hasValidData"
         class="flex items-center justify-center text-gray-400"
         :style="{ height: `${height}px` }"
       >
@@ -245,7 +255,7 @@ const trendIcon = computed(() => {
 
       <!-- Chart SVG -->
       <svg
-        v-else
+        v-else-if="hasValidData"
         :viewBox="`0 0 ${chartWidth} ${chartHeight}`"
         class="w-full"
         preserveAspectRatio="xMidYMid meet"
