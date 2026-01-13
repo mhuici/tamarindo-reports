@@ -41,7 +41,8 @@ async function handleSubmit() {
     // Fetch user to get tenant slug
     const { user } = useAuth()
     const tenantSlug = user.value?.tenantSlug || 'demo'
-    await navigateTo(`/${tenantSlug}`)
+    // Redirect to onboarding for new users
+    await navigateTo(`/${tenantSlug}/onboarding`)
   }
   else {
     error.value = result.error || 'Registration failed. Please try again.'

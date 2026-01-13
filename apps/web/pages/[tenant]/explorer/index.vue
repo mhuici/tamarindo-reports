@@ -125,6 +125,62 @@ const chartData = computed(() => {
 
 // View mode for table
 const tableViewMode = ref<'table' | 'chart'>('table')
+
+// Executive Summary Modal
+const showExecutiveSummaryModal = ref(false)
+
+// Get selected client name
+const selectedClientName = computed(() => {
+  if (!selectedClientId.value) return 'Todos los clientes'
+  const client = clients.value.find((c: any) => c.id === selectedClientId.value)
+  return client?.name || 'Cliente'
+})
+
+// Metrics for executive summary
+const executiveSummaryMetrics = computed(() => {
+  if (!hasData.value) return []
+
+  return [
+    {
+      name: 'spend',
+      label: 'Total Spend',
+      value: totalSpend.value,
+      previousValue: previousSpend.value,
+      changePercent: calculateChange(totalSpend.value, previousSpend.value),
+      format: 'currency' as const,
+    },
+    {
+      name: 'clicks',
+      label: 'Total Clicks',
+      value: totalClicks.value,
+      previousValue: previousClicks.value,
+      changePercent: calculateChange(totalClicks.value, previousClicks.value),
+      format: 'number' as const,
+    },
+    {
+      name: 'conversions',
+      label: 'Conversions',
+      value: totalConversions.value,
+      previousValue: previousConversions.value,
+      changePercent: calculateChange(totalConversions.value, previousConversions.value),
+      format: 'number' as const,
+    },
+    {
+      name: 'roas',
+      label: 'ROAS',
+      value: totalRoas.value,
+      previousValue: previousRoas.value,
+      changePercent: calculateChange(totalRoas.value, previousRoas.value),
+      format: 'number' as const,
+    },
+  ]
+})
+
+// Date range for executive summary
+const executiveSummaryDateRange = computed(() => ({
+  start: dateRange.value.start,
+  end: dateRange.value.end,
+}))
 </script>
 
 <template>
@@ -140,6 +196,17 @@ const tableViewMode = ref<'table' | 'chart'>('table')
         </p>
       </div>
       <div class="flex items-center gap-3">
+        <button
+          class="btn-secondary flex items-center gap-2"
+          :disabled="!hasData"
+          @click="showExecutiveSummaryModal = true"
+        >
+          <Icon
+            name="heroicons:document-text"
+            class="w-5 h-5"
+          />
+          Resumen Ejecutivo
+        </button>
         <button
           class="btn-secondary flex items-center gap-2"
           :disabled="!hasData"
@@ -564,5 +631,14 @@ const tableViewMode = ref<'table' | 'chart'>('table')
         Connect Platforms
       </NuxtLink>
     </div>
+
+    <!-- Executive Summary Modal -->
+    <AIExecutiveSummaryModal
+      :open="showExecutiveSummaryModal"
+      :client-name="selectedClientName"
+      :metrics="executiveSummaryMetrics"
+      :date-range="executiveSummaryDateRange"
+      @close="showExecutiveSummaryModal = false"
+    />
   </div>
 </template>

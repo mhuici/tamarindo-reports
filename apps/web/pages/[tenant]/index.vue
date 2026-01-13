@@ -98,6 +98,9 @@ const chartMaxValue = computed(() => {
 
 <template>
   <div>
+    <!-- Onboarding Banner -->
+    <OnboardingOnboardingBanner />
+
     <!-- Loading state -->
     <div
       v-if="isLoading"

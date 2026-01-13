@@ -10,15 +10,27 @@ interface Widget {
   data?: any
 }
 
+interface RCAContext {
+  clientName: string
+  industry?: string
+  platform: string
+  dateRange: { start: string; end: string }
+}
+
 interface Props {
   widget: Widget
   editable?: boolean
   loading?: boolean
+  /** Context for RCA analysis on metric widgets */
+  rcaContext?: RCAContext
+  /** Show insight button on metric widgets */
+  showInsightButton?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   editable: false,
   loading: false,
+  showInsightButton: true,
 })
 
 const emit = defineEmits<{
@@ -48,6 +60,9 @@ function updateWidget(updates: Partial<Widget>) {
       :previous-value="widget.data?.previousValue"
       :format="widget.config.format"
       :loading="loading"
+      :metric-key="widget.config.metric"
+      :rca-context="rcaContext"
+      :show-insight-button="showInsightButton"
     />
 
     <!-- Line chart -->

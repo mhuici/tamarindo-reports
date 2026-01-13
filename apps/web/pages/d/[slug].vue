@@ -458,6 +458,58 @@ function normalizeChartData(data: Array<{ label: string, value: number }>) {
     height: Math.max((d.value / maxValue) * 100, 5), // Minimum 5% height
   }))
 }
+
+// Executive Summary Modal state
+const showExecutiveSummaryModal = ref(false)
+
+// Computed metrics for Executive Summary
+const executiveSummaryMetrics = computed(() => {
+  if (!dashboard.value?.widgets || !metricsData.value?.widgetData) return []
+
+  const metrics: Array<{
+    name: string
+    label: string
+    value: number
+    previousValue?: number
+    changePercent?: number
+    format?: 'number' | 'currency' | 'percent'
+  }> = []
+
+  const metricWidgets = dashboard.value.widgets.filter((w: any) =>
+    (w.type === 'metric' || w.type === 'metric-card') && metricsData.value.widgetData[w.id],
+  )
+
+  for (const widget of metricWidgets) {
+    const data = metricsData.value.widgetData[widget.id]
+    if (!data?.value) continue
+
+    const changePercent = data.previousValue
+      ? ((data.value - data.previousValue) / data.previousValue) * 100
+      : 0
+
+    metrics.push({
+      name: widget.config?.metricKey || widget.id,
+      label: widget.title,
+      value: data.value,
+      previousValue: data.previousValue,
+      changePercent,
+      format: widget.config?.format as 'number' | 'currency' | 'percent' | undefined,
+    })
+  }
+
+  return metrics
+})
+
+// Date range for executive summary
+const executiveSummaryDateRange = computed(() => {
+  const end = new Date()
+  const start = new Date()
+  start.setDate(start.getDate() - 7)
+  return {
+    start: start.toISOString().split('T')[0] || '',
+    end: end.toISOString().split('T')[0] || '',
+  }
+})
 </script>
 
 <template>
@@ -614,8 +666,18 @@ function normalizeChartData(data: Array<{ label: string, value: number }>) {
                 </h1>
               </div>
             </div>
-            <!-- Estado (Mobile: solo indicador, Desktop: completo) -->
+            <!-- Estado y acciones -->
             <div class="flex items-center gap-2 shrink-0">
+              <!-- Botón Resumen Ejecutivo -->
+              <button
+                v-if="executiveSummaryMetrics.length > 0"
+                type="button"
+                class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition-colors"
+                @click="showExecutiveSummaryModal = true"
+              >
+                <Icon name="heroicons:document-text" class="w-4 h-4" />
+                Resumen
+              </button>
               <div
                 class="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium"
                 :class="metricsData?.hasData ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'"
@@ -712,6 +774,15 @@ function normalizeChartData(data: Array<{ label: string, value: number }>) {
               :has-real-data="hasRealData(widget)"
               :insight="getWidgetInsight(widget.id)"
               :loading="isAnalyzingRCA && widgetHasSignificantChange(widget) && !getWidgetInsight(widget.id)"
+              :client-name="dashboard.clientName"
+              :rca-context="{
+                clientName: dashboard.clientName || 'Cliente',
+                platform: 'mixed',
+                dateRange: {
+                  start: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] || '',
+                  end: new Date().toISOString().split('T')[0] || '',
+                },
+              }"
             />
           </div>
         </section>
@@ -869,6 +940,15 @@ function normalizeChartData(data: Array<{ label: string, value: number }>) {
         </div>
       </footer>
     </div>
+
+    <!-- Executive Summary Modal -->
+    <AIExecutiveSummaryModal
+      :open="showExecutiveSummaryModal"
+      :client-name="dashboard?.clientName || 'Cliente'"
+      :metrics="executiveSummaryMetrics"
+      :date-range="executiveSummaryDateRange"
+      @close="showExecutiveSummaryModal = false"
+    />
   </div>
 </template>
 

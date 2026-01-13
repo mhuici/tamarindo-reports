@@ -8,6 +8,26 @@ interface RCACause {
   action?: string
 }
 
+interface RCAResult {
+  metric: string
+  metricLabel: string
+  change: {
+    value: number
+    percentage: number
+    direction: 'up' | 'down'
+  }
+  causes: RCACause[]
+  summary: string
+  isFallback: boolean
+}
+
+interface RCAContext {
+  clientName: string
+  industry?: string
+  platform: string
+  dateRange: { start: string; end: string }
+}
+
 interface Props {
   id: string
   title: string
@@ -20,8 +40,13 @@ interface Props {
   insight?: {
     summary: string
     causes?: RCACause[]
+    isFallback?: boolean
   }
   loading?: boolean
+  /** Context for RCA analysis */
+  rcaContext?: RCAContext
+  /** Client name for display in modal */
+  clientName?: string
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -30,6 +55,7 @@ const props = withDefaults(defineProps<Props>(), {
   icon: 'heroicons:presentation-chart-bar',
   hasRealData: false,
   loading: false,
+  clientName: '',
 })
 
 // Calculate percentage change
@@ -62,6 +88,38 @@ function formatValue(num: number): string {
 
 // Show insight toggle
 const showInsight = ref(false)
+
+// Modal state for full analysis
+const showInsightModal = ref(false)
+
+// Convert insight prop to RCAResult format for modal
+const rcaResultForModal = computed<RCAResult | null>(() => {
+  if (!props.insight) return null
+
+  return {
+    metric: props.id,
+    metricLabel: props.title,
+    change: {
+      value: props.value - (props.previousValue || 0),
+      percentage: changePercent.value,
+      direction: changePercent.value >= 0 ? 'up' : 'down',
+    },
+    causes: props.insight.causes || [],
+    summary: props.insight.summary,
+    isFallback: props.insight.isFallback || false,
+  }
+})
+
+// Period display for modal
+const periodDisplay = computed(() => {
+  if (!props.rcaContext?.dateRange) return ''
+  const { start, end } = props.rcaContext.dateRange
+  return `${start} - ${end}`
+})
+
+function openFullAnalysis() {
+  showInsightModal.value = true
+}
 </script>
 
 <template>
@@ -170,9 +228,28 @@ const showInsight = ref(false)
                 → {{ cause.action }}
               </span>
             </div>
+
+            <!-- Button to open full analysis modal -->
+            <button
+              type="button"
+              class="mt-2 w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-amber-700 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors"
+              @click.stop="openFullAnalysis"
+            >
+              <Icon name="heroicons:arrow-top-right-on-square" class="w-3.5 h-3.5" />
+              Ver análisis completo
+            </button>
           </div>
         </button>
       </div>
     </div>
+
+    <!-- Full Analysis Modal -->
+    <AIInsightModal
+      :open="showInsightModal"
+      :result="rcaResultForModal"
+      :client-name="clientName || rcaContext?.clientName"
+      :period="periodDisplay"
+      @close="showInsightModal = false"
+    />
   </div>
 </template>
