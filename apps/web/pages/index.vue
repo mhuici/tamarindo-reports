@@ -100,12 +100,12 @@ const testimonials = [
             <span class="font-semibold text-gray-900">TamarindoReports</span>
           </div>
           <nav class="hidden md:flex items-center gap-8">
-            <a
-              href="#demo"
+            <NuxtLink
+              to="/demo"
               class="text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
               Demo
-            </a>
+            </NuxtLink>
             <a
               href="#features"
               class="text-sm text-gray-600 hover:text-gray-900 transition-colors"
@@ -173,12 +173,12 @@ const testimonials = [
                 Empezar gratis - 14 dias
                 <Icon name="heroicons:arrow-right" class="w-5 h-5 ml-2" />
               </NuxtLink>
-              <a
-                href="#demo"
+              <NuxtLink
+                to="/demo"
                 class="w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 bg-white text-gray-700 text-lg font-medium rounded-xl border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all"
               >
                 Ver demo en vivo
-              </a>
+              </NuxtLink>
             </div>
             <p class="mt-4 text-sm text-gray-500">
               Sin tarjeta de credito. Cancela cuando quieras.
