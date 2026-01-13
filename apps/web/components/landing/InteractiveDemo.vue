@@ -1,14 +1,43 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
+
+// Type definitions
+interface DemoMetric {
+  id: string
+  label: string
+  value: number
+  previousValue: number
+  format: 'number' | 'currency' | 'percent'
+  suffix?: string
+}
+
+interface DemoCause {
+  factor: string
+  explanation: string
+  confidence: number
+  action?: string
+}
+
+interface DemoAnalysisResult {
+  metric: string
+  metricLabel: string
+  change: {
+    percentage: number
+    direction: 'up' | 'down'
+  }
+  causes: DemoCause[]
+  summary: string
+  isFallback?: boolean
+}
 
 // Mock data for demo
-const mockMetrics = [
+const mockMetrics: DemoMetric[] = [
   {
     id: 'roas',
     label: 'ROAS',
     value: 2.3,
     previousValue: 2.8,
-    format: 'number' as const,
+    format: 'number',
     suffix: 'x',
   },
   {
@@ -16,24 +45,25 @@ const mockMetrics = [
     label: 'CPC',
     value: 0.58,
     previousValue: 0.45,
-    format: 'currency' as const,
+    format: 'currency',
   },
   {
     id: 'ctr',
     label: 'CTR',
     value: 1.7,
     previousValue: 2.1,
-    format: 'percent' as const,
+    format: 'percent',
   },
 ]
 
-const selectedMetric = ref(mockMetrics[0])
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+const selectedMetric = ref<DemoMetric>(mockMetrics[0]!)
 const showInsight = ref(false)
 const isAnalyzing = ref(false)
-const analysisResult = ref<any>(null)
+const analysisResult = ref<DemoAnalysisResult | null>(null)
 
 // Calculate change percentage
-function getChange(metric: typeof mockMetrics[0]) {
+function getChange(metric: DemoMetric) {
   const change = ((metric.value - metric.previousValue) / metric.previousValue) * 100
   return {
     value: change,
@@ -42,7 +72,7 @@ function getChange(metric: typeof mockMetrics[0]) {
 }
 
 // Format value based on type
-function formatValue(metric: typeof mockMetrics[0]): string {
+function formatValue(metric: DemoMetric): string {
   if (metric.format === 'currency') {
     return `$${metric.value.toFixed(2)}`
   }
@@ -121,7 +151,7 @@ function resetDemo() {
 }
 
 // Select different metric
-function selectMetric(metric: typeof mockMetrics[0]) {
+function selectMetric(metric: DemoMetric) {
   selectedMetric.value = metric
   resetDemo()
 }
@@ -144,11 +174,16 @@ function selectMetric(metric: typeof mockMetrics[0]) {
       </div>
 
       <!-- Metric Tabs -->
-      <div class="flex border-b border-gray-100">
+      <div class="flex border-b border-gray-100" role="tablist" aria-label="Métricas disponibles">
         <button
           v-for="metric in mockMetrics"
           :key="metric.id"
           type="button"
+          role="tab"
+          :id="`tab-${metric.id}`"
+          :aria-selected="selectedMetric.id === metric.id"
+          :aria-controls="`panel-${metric.id}`"
+          :tabindex="selectedMetric.id === metric.id ? 0 : -1"
           :class="[
             'flex-1 px-4 py-2.5 text-sm font-medium transition-colors',
             selectedMetric.id === metric.id
@@ -162,7 +197,12 @@ function selectMetric(metric: typeof mockMetrics[0]) {
       </div>
 
       <!-- Main Content -->
-      <div class="p-6">
+      <div
+        class="p-6"
+        role="tabpanel"
+        :id="`panel-${selectedMetric.id}`"
+        :aria-labelledby="`tab-${selectedMetric.id}`"
+      >
         <!-- Metric Display -->
         <div class="text-center mb-6">
           <p class="text-sm text-gray-500 mb-1">{{ selectedMetric.label }}</p>
@@ -268,7 +308,7 @@ function selectMetric(metric: typeof mockMetrics[0]) {
               class="flex items-center justify-center gap-1.5 text-xs text-blue-600 bg-blue-50 py-2 rounded-lg"
             >
               <Icon name="heroicons:information-circle" class="w-4 h-4" />
-              <span>Demo - Crea tu cuenta para analisis reales</span>
+              <span>Demo - Crea tu cuenta para análisis reales</span>
             </div>
 
             <!-- Reset button -->
@@ -277,7 +317,7 @@ function selectMetric(metric: typeof mockMetrics[0]) {
               class="w-full text-center text-sm text-gray-500 hover:text-gray-700 py-2"
               @click="resetDemo"
             >
-              ← Probar otra metrica
+              ← Probar otra métrica
             </button>
           </div>
         </Transition>

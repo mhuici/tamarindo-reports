@@ -1,4 +1,39 @@
 <script setup lang="ts">
+// TypeScript interfaces
+interface RCACause {
+  factor: string
+  explanation: string
+  confidence: number
+  action?: string
+}
+
+interface RCAResult {
+  metric: string
+  metricLabel: string
+  change: {
+    percentage: number
+    direction: 'up' | 'down'
+  }
+  causes: RCACause[]
+  summary: string
+  isFallback?: boolean
+}
+
+interface SummaryResult {
+  markdown: string
+  isFallback?: boolean
+}
+
+interface Metric {
+  id: string
+  label: string
+  value: number
+  previousValue: number
+  format: 'currency' | 'number' | 'percent'
+  suffix?: string
+  changePercent: number
+}
+
 definePageMeta({
   layout: 'default',
 })
@@ -6,6 +41,10 @@ definePageMeta({
 useSeoMeta({
   title: 'Demo - TamarindoReports',
   description: 'Explora TamarindoReports con datos de ejemplo. Prueba el análisis de causa, narrativas AI y forecasting.',
+  ogTitle: 'Demo - TamarindoReports',
+  ogDescription: 'Explora TamarindoReports con datos de ejemplo. Prueba el análisis de causa, narrativas AI y forecasting sin crear cuenta.',
+  ogImage: '/og-demo.png',
+  twitterCard: 'summary_large_image',
 })
 
 // Mock client data
@@ -15,7 +54,7 @@ const mockClient = {
 }
 
 // Mock metrics with significant changes
-const mockMetrics = ref([
+const mockMetrics = ref<Metric[]>([
   {
     id: 'spend',
     label: 'Spend',
@@ -73,23 +112,39 @@ const dateRange = {
   end: '2026-01-12',
 }
 
+// Format date range for display
+function formatDateRange(start: string, end: string): string {
+  const startDate = new Date(start)
+  const endDate = new Date(end)
+  const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short' }
+  const yearOptions: Intl.DateTimeFormatOptions = { year: 'numeric' }
+
+  const startFormatted = startDate.toLocaleDateString('es-ES', options)
+  const endFormatted = endDate.toLocaleDateString('es-ES', options)
+  const year = endDate.toLocaleDateString('es-ES', yearOptions)
+
+  return `${startFormatted} - ${endFormatted}, ${year}`
+}
+
+const formattedDateRange = computed(() => formatDateRange(dateRange.start, dateRange.end))
+
 // RCA Modal state
 const showInsightModal = ref(false)
-const selectedMetric = ref<typeof mockMetrics.value[0] | null>(null)
+const selectedMetric = ref<Metric | null>(null)
 const isAnalyzing = ref(false)
-const rcaResult = ref<any>(null)
+const rcaResult = ref<RCAResult | null>(null)
 
 // Executive Summary Modal state
 const showSummaryModal = ref(false)
 const isGeneratingSummary = ref(false)
-const summaryResult = ref<any>(null)
+const summaryResult = ref<SummaryResult | null>(null)
 const summaryConfig = ref({
   tone: 'professional' as 'professional' | 'casual' | 'technical',
   language: 'es' as 'es' | 'en',
 })
 
 // Format helpers
-function formatValue(metric: typeof mockMetrics.value[0]): string {
+function formatValue(metric: Metric): string {
   if (metric.format === 'currency') {
     return `$${metric.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
@@ -102,11 +157,10 @@ function formatValue(metric: typeof mockMetrics.value[0]): string {
   return metric.value.toLocaleString()
 }
 
-function getChangeColor(change: number): string {
-  // For CPC and CPA, negative is good
-  const metric = selectedMetric.value
+function getChangeColor(metricId: string, change: number): string {
+  // For CPC and CPA, negative is good (lower cost = better)
   const invertedMetrics = ['cpc', 'cpa']
-  const isInverted = metric && invertedMetrics.includes(metric.id)
+  const isInverted = invertedMetrics.includes(metricId)
 
   if (isInverted) {
     return change <= 0 ? 'text-green-600' : 'text-red-600'
@@ -115,7 +169,7 @@ function getChangeColor(change: number): string {
 }
 
 // Analyze metric with RCA
-async function analyzeMetric(metric: typeof mockMetrics.value[0]) {
+async function analyzeMetric(metric: Metric) {
   selectedMetric.value = metric
   showInsightModal.value = true
   isAnalyzing.value = true
@@ -152,10 +206,10 @@ async function analyzeMetric(metric: typeof mockMetrics.value[0]) {
 }
 
 // Generate mock RCA if API fails
-function generateMockRCA(metric: typeof mockMetrics.value[0]) {
+function generateMockRCA(metric: Metric): RCAResult {
   const isNegative = metric.changePercent < 0
 
-  const mockCauses: Record<string, any[]> = {
+  const mockCauses: Record<string, RCACause[]> = {
     roas: [
       {
         factor: 'Aumento en competencia',
@@ -217,7 +271,7 @@ function generateMockRCA(metric: typeof mockMetrics.value[0]) {
       direction: isNegative ? 'down' : 'up',
     },
     causes,
-    summary: `${metric.label} ${isNegative ? 'bajó' : 'subió'} ${Math.abs(metric.changePercent).toFixed(1)}% esta semana. ${causes[0].explanation}`,
+    summary: `${metric.label} ${isNegative ? 'bajó' : 'subió'} ${Math.abs(metric.changePercent).toFixed(1)}% esta semana. ${causes[0]?.explanation ?? 'Analizando factores...'}`,
     isFallback: true,
   }
 }
@@ -261,7 +315,7 @@ async function generateSummary() {
   }
 }
 
-function generateMockSummary() {
+function generateMockSummary(): SummaryResult {
   return {
     markdown: `# Resumen Ejecutivo: ${mockClient.name}
 **Periodo:** 6 Ene - 12 Ene, 2026
@@ -361,7 +415,7 @@ async function copySummary() {
       <div class="flex items-center justify-between mb-8">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">{{ mockClient.name }}</h1>
-          <p class="text-gray-500">{{ dateRange.start }} - {{ dateRange.end }}</p>
+          <p class="text-gray-500">{{ formattedDateRange }}</p>
         </div>
         <button
           type="button"
@@ -384,7 +438,7 @@ async function copySummary() {
             <p class="text-sm font-medium text-gray-500">{{ metric.label }}</p>
             <span
               class="text-sm font-semibold"
-              :class="getChangeColor(metric.changePercent)"
+              :class="getChangeColor(metric.id, metric.changePercent)"
             >
               {{ metric.changePercent >= 0 ? '+' : '' }}{{ metric.changePercent.toFixed(1) }}%
             </span>
@@ -452,9 +506,13 @@ async function copySummary() {
         <div
           v-if="showInsightModal"
           class="fixed inset-0 z-50 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="rca-modal-title"
         >
           <div
             class="fixed inset-0 bg-black/50 backdrop-blur-sm"
+            aria-hidden="true"
             @click="showInsightModal = false"
           />
           <div class="flex min-h-full items-center justify-center p-4">
@@ -463,19 +521,20 @@ async function copySummary() {
               <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <div class="flex items-center gap-3">
                   <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                    <Icon name="heroicons:light-bulb" class="w-5 h-5 text-white" />
+                    <Icon name="heroicons:light-bulb" class="w-5 h-5 text-white" aria-hidden="true" />
                   </div>
                   <div>
-                    <h2 class="text-lg font-semibold text-gray-900">Análisis de Causa</h2>
+                    <h2 id="rca-modal-title" class="text-lg font-semibold text-gray-900">Análisis de Causa</h2>
                     <p class="text-sm text-gray-500">{{ selectedMetric?.label }}</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                  aria-label="Cerrar modal"
                   @click="showInsightModal = false"
                 >
-                  <Icon name="heroicons:x-mark" class="w-5 h-5" />
+                  <Icon name="heroicons:x-mark" class="w-5 h-5" aria-hidden="true" />
                 </button>
               </div>
 
@@ -559,9 +618,13 @@ async function copySummary() {
         <div
           v-if="showSummaryModal"
           class="fixed inset-0 z-50 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="summary-modal-title"
         >
           <div
             class="fixed inset-0 bg-black/50 backdrop-blur-sm"
+            aria-hidden="true"
             @click="showSummaryModal = false"
           />
           <div class="flex min-h-full items-center justify-center p-4">
@@ -570,19 +633,20 @@ async function copySummary() {
               <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
                 <div class="flex items-center gap-3">
                   <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                    <Icon name="heroicons:document-text" class="w-5 h-5 text-white" />
+                    <Icon name="heroicons:document-text" class="w-5 h-5 text-white" aria-hidden="true" />
                   </div>
                   <div>
-                    <h2 class="text-lg font-semibold text-gray-900">Resumen Ejecutivo</h2>
+                    <h2 id="summary-modal-title" class="text-lg font-semibold text-gray-900">Resumen Ejecutivo</h2>
                     <p class="text-sm text-gray-500">{{ mockClient.name }}</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+                  aria-label="Cerrar modal"
                   @click="showSummaryModal = false"
                 >
-                  <Icon name="heroicons:x-mark" class="w-5 h-5" />
+                  <Icon name="heroicons:x-mark" class="w-5 h-5" aria-hidden="true" />
                 </button>
               </div>
 
