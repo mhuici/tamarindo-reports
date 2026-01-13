@@ -161,5 +161,8 @@ async function handleLogout() {
         <slot />
       </main>
     </div>
+
+    <!-- Feedback Widget -->
+    <FeedbackFeedbackWidget />
   </div>
 </template>
