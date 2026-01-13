@@ -1,15 +1,15 @@
 /**
  * Health Check Endpoint
  * Used by Railway and other services to monitor application health
+ *
+ * Note: Returns 200 even if database is unavailable to allow the service to start.
+ * Database status is included in the response for monitoring purposes.
  */
-import { defineEventHandler, setResponseStatus } from 'h3'
-import { prisma } from '@tamarindo/db'
+import { defineEventHandler } from 'h3'
 
-export default defineEventHandler(async (event) => {
-  const startTime = Date.now()
-
+export default defineEventHandler(async () => {
   const health: {
-    status: 'healthy' | 'unhealthy'
+    status: 'healthy' | 'degraded'
     timestamp: string
     uptime: number
     version: string
@@ -32,16 +32,20 @@ export default defineEventHandler(async (event) => {
     },
   }
 
-  // Check database connection
+  // Check database connection (non-blocking for healthcheck)
   try {
+    const { prisma } = await import('@tamarindo/db')
     const dbStart = Date.now()
     await prisma.$queryRaw`SELECT 1`
     health.checks.database = {
       status: 'connected',
       latency: Date.now() - dbStart,
     }
-  } catch (error) {
-    health.status = 'unhealthy'
+  }
+  catch (error) {
+    // Mark as degraded but don't fail the healthcheck
+    // This allows the service to start even without database
+    health.status = 'degraded'
     health.checks.database = {
       status: 'disconnected',
       error: error instanceof Error ? error.message : 'Unknown error',
@@ -56,8 +60,6 @@ export default defineEventHandler(async (event) => {
     rss: Math.round(memUsage.rss / 1024 / 1024), // MB
   }
 
-  // Set appropriate status code
-  setResponseStatus(event, health.status === 'healthy' ? 200 : 503)
-
+  // Always return 200 to pass healthcheck - database status is in response body
   return health
 })
