@@ -34,6 +34,12 @@ interface Metric {
   changePercent: number
 }
 
+interface Feature {
+  icon: string
+  title: string
+  description: string
+}
+
 definePageMeta({
   layout: 'default',
 })
@@ -52,6 +58,25 @@ const mockClient = {
   name: 'Acme E-commerce',
   industry: 'E-commerce',
 }
+
+// Features data
+const features: Feature[] = [
+  {
+    icon: 'heroicons:light-bulb',
+    title: 'Análisis de Causa',
+    description: 'Haz click en "¿Por qué cambió?" en cualquier métrica con cambio significativo para ver el análisis de IA.',
+  },
+  {
+    icon: 'heroicons:document-text',
+    title: 'Resumen Ejecutivo',
+    description: 'Genera un resumen completo listo para enviar a tu cliente con un solo click.',
+  },
+  {
+    icon: 'heroicons:chart-bar-square',
+    title: 'Forecasting',
+    description: 'Predicciones de spend y métricas incluidas automáticamente en el resumen ejecutivo.',
+  },
+]
 
 // Mock metrics with significant changes
 const mockMetrics = ref<Metric[]>([
@@ -166,6 +191,16 @@ function getChangeColor(metricId: string, change: number): string {
     return change <= 0 ? 'text-green-600' : 'text-red-600'
   }
   return change >= 0 ? 'text-green-600' : 'text-red-600'
+}
+
+function getChangeBgColor(metricId: string, change: number): string {
+  const invertedMetrics = ['cpc', 'cpa']
+  const isInverted = invertedMetrics.includes(metricId)
+
+  if (isInverted) {
+    return change <= 0 ? 'bg-green-50' : 'bg-red-50'
+  }
+  return change >= 0 ? 'bg-green-50' : 'bg-red-50'
 }
 
 // Analyze metric with RCA
@@ -365,137 +400,140 @@ async function copySummary() {
 
 <template>
   <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
+    <!-- Header - Mobile First -->
     <header class="bg-white border-b border-gray-200 sticky top-0 z-40">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
-          <div class="flex items-center gap-4">
-            <NuxtLink
-              to="/"
-              class="flex items-center gap-3"
-            >
-              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
-                <span class="text-white font-bold text-sm">T</span>
+        <div class="flex items-center justify-between h-14 sm:h-16">
+          <!-- Logo -->
+          <div class="flex items-center gap-2 sm:gap-4">
+            <NuxtLink to="/" class="flex items-center gap-2 sm:gap-3">
+              <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+                <span class="text-white font-bold text-xs sm:text-sm">T</span>
               </div>
-              <span class="font-semibold text-gray-900">TamarindoReports</span>
+              <span class="font-semibold text-gray-900 text-sm sm:text-base hidden sm:inline">TamarindoReports</span>
             </NuxtLink>
-            <span class="px-2 py-1 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+            <span class="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-amber-100 text-amber-700 text-[10px] sm:text-xs font-medium rounded-full">
               Demo
             </span>
           </div>
-          <div class="flex items-center gap-4">
-            <NuxtLink
-              to="/register"
-              class="inline-flex items-center px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-medium rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all"
-            >
-              Crear cuenta gratis
-            </NuxtLink>
-          </div>
+          <!-- CTA - Touch friendly -->
+          <NuxtLink
+            to="/register"
+            class="inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs sm:text-sm font-medium rounded-lg hover:from-amber-600 hover:to-orange-600 active:from-amber-700 active:to-orange-700 transition-all min-h-[44px]"
+          >
+            <span class="hidden sm:inline">Crear cuenta gratis</span>
+            <span class="sm:hidden">Registrarse</span>
+          </NuxtLink>
         </div>
       </div>
     </header>
 
-    <!-- Demo Banner -->
-    <div class="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3">
+    <!-- Demo Banner - Responsive -->
+    <div class="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-2.5 sm:py-3">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <p class="text-sm">
-          <Icon name="heroicons:sparkles" class="w-4 h-4 inline mr-1" />
-          Esto es una demo con datos de ejemplo.
+        <p class="text-xs sm:text-sm leading-relaxed">
+          <Icon name="heroicons:sparkles" class="w-3.5 h-3.5 sm:w-4 sm:h-4 inline mr-1" aria-hidden="true" />
+          <span class="hidden sm:inline">Esto es una demo con datos de ejemplo. </span>
+          <span class="sm:hidden">Demo con datos de ejemplo. </span>
           <NuxtLink to="/register" class="underline font-medium hover:no-underline">
             Crea tu cuenta gratis
           </NuxtLink>
-          para conectar tus datos reales.
         </p>
       </div>
     </div>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Client Header -->
-      <div class="flex items-center justify-between mb-8">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <!-- Client Header - Stack on mobile -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">{{ mockClient.name }}</h1>
-          <p class="text-gray-500">{{ formattedDateRange }}</p>
+          <h1 class="text-fluid-xl font-bold text-gray-900">{{ mockClient.name }}</h1>
+          <p class="text-sm sm:text-base text-gray-500 mt-1">{{ formattedDateRange }}</p>
         </div>
+        <!-- CTA Button - Full width on mobile -->
         <button
           type="button"
-          class="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium rounded-lg hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg shadow-amber-500/25"
+          class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-medium rounded-xl sm:rounded-lg hover:from-amber-600 hover:to-orange-600 active:from-amber-700 active:to-orange-700 transition-all shadow-lg shadow-amber-500/25 min-h-[48px] sm:min-h-[44px]"
           @click="showSummaryModal = true; generateSummary()"
         >
-          <Icon name="heroicons:document-text" class="w-5 h-5" />
-          Resumen Ejecutivo
+          <Icon name="heroicons:document-text" class="w-5 h-5" aria-hidden="true" />
+          <span>Generar Resumen Ejecutivo</span>
         </button>
       </div>
 
-      <!-- Metrics Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <!-- Metrics Section -->
+      <section class="mb-8 sm:mb-10">
+        <!-- Section header with swipe hint -->
+        <div class="flex items-center justify-between mb-3 sm:mb-4">
+          <h2 class="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wide">
+            Métricas Clave
+          </h2>
+          <span class="text-xs text-gray-400 sm:hidden flex items-center gap-1">
+            <Icon name="heroicons:arrow-right" class="w-3 h-3" aria-hidden="true" />
+            Desliza
+          </span>
+        </div>
+
+        <!-- Metrics: Horizontal scroll on mobile, Grid on desktop -->
         <div
-          v-for="metric in mockMetrics"
-          :key="metric.id"
-          class="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-all"
+          class="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 sm:snap-none lg:grid-cols-3"
         >
-          <div class="flex items-start justify-between mb-4">
-            <p class="text-sm font-medium text-gray-500">{{ metric.label }}</p>
-            <span
-              class="text-sm font-semibold"
-              :class="getChangeColor(metric.id, metric.changePercent)"
-            >
-              {{ metric.changePercent >= 0 ? '+' : '' }}{{ metric.changePercent.toFixed(1) }}%
-            </span>
-          </div>
-
-          <p class="text-3xl font-bold text-gray-900 mb-4">
-            {{ formatValue(metric) }}
-          </p>
-
-          <!-- Insight button for significant changes -->
-          <button
-            v-if="Math.abs(metric.changePercent) >= 10"
-            type="button"
-            class="w-full flex items-center justify-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 font-medium rounded-lg hover:bg-amber-100 transition-colors"
-            @click="analyzeMetric(metric)"
+          <div
+            v-for="metric in mockMetrics"
+            :key="metric.id"
+            class="flex-shrink-0 w-[280px] sm:w-auto bg-white rounded-xl border border-gray-200 p-5 sm:p-6 hover:shadow-lg hover:border-gray-300 transition-all duration-200 ease-out snap-center sm:snap-align-none touch-manipulation"
           >
-            <Icon name="heroicons:light-bulb" class="w-4 h-4" />
-            ¿Por qué cambió?
-          </button>
-        </div>
-      </div>
+            <!-- Metric header -->
+            <div class="flex items-start justify-between mb-3 sm:mb-4">
+              <p class="text-xs sm:text-sm font-medium text-gray-500">{{ metric.label }}</p>
+              <span
+                class="text-xs sm:text-sm font-semibold px-2 py-0.5 rounded-full"
+                :class="[getChangeColor(metric.id, metric.changePercent), getChangeBgColor(metric.id, metric.changePercent)]"
+              >
+                {{ metric.changePercent >= 0 ? '+' : '' }}{{ metric.changePercent.toFixed(1) }}%
+              </span>
+            </div>
 
-      <!-- Features Callout -->
-      <div class="grid md:grid-cols-3 gap-6">
-        <div class="bg-white rounded-xl border border-gray-200 p-6">
-          <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center mb-4">
-            <Icon name="heroicons:light-bulb" class="w-6 h-6 text-amber-600" />
-          </div>
-          <h3 class="font-semibold text-gray-900 mb-2">Análisis de Causa</h3>
-          <p class="text-sm text-gray-600">
-            Haz click en "¿Por qué cambió?" en cualquier métrica con cambio significativo para ver el análisis de IA.
-          </p>
-        </div>
+            <!-- Metric value -->
+            <p class="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4">
+              {{ formatValue(metric) }}
+            </p>
 
-        <div class="bg-white rounded-xl border border-gray-200 p-6">
-          <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center mb-4">
-            <Icon name="heroicons:document-text" class="w-6 h-6 text-amber-600" />
+            <!-- Insight button - Touch friendly -->
+            <button
+              v-if="Math.abs(metric.changePercent) >= 10"
+              type="button"
+              class="w-full flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 bg-amber-50 text-amber-700 font-medium rounded-lg hover:bg-amber-100 active:bg-amber-200 transition-colors min-h-[44px]"
+              @click="analyzeMetric(metric)"
+            >
+              <Icon name="heroicons:light-bulb" class="w-4 h-4" aria-hidden="true" />
+              <span class="text-sm">¿Por qué cambió?</span>
+            </button>
           </div>
-          <h3 class="font-semibold text-gray-900 mb-2">Resumen Ejecutivo</h3>
-          <p class="text-sm text-gray-600">
-            Genera un resumen completo listo para enviar a tu cliente con un solo click.
-          </p>
         </div>
+      </section>
 
-        <div class="bg-white rounded-xl border border-gray-200 p-6">
-          <div class="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center mb-4">
-            <Icon name="heroicons:chart-bar-square" class="w-6 h-6 text-amber-600" />
+      <!-- Features Callout - Horizontal on mobile, Grid on desktop -->
+      <section>
+        <div class="grid gap-4 sm:gap-6 md:grid-cols-3">
+          <div
+            v-for="feature in features"
+            :key="feature.title"
+            class="bg-white rounded-xl border border-gray-200 p-4 sm:p-6 flex gap-4 sm:block transition-all duration-200 hover:shadow-md hover:border-gray-300"
+          >
+            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-amber-100 flex items-center justify-center shrink-0 sm:mb-4">
+              <Icon :name="feature.icon" class="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" aria-hidden="true" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <h3 class="font-semibold text-gray-900 text-sm sm:text-base mb-1 sm:mb-2">{{ feature.title }}</h3>
+              <p class="text-xs sm:text-sm text-gray-600 leading-relaxed">{{ feature.description }}</p>
+            </div>
           </div>
-          <h3 class="font-semibold text-gray-900 mb-2">Forecasting</h3>
-          <p class="text-sm text-gray-600">
-            Predicciones de spend y métricas incluidas automáticamente en el resumen ejecutivo.
-          </p>
         </div>
-      </div>
+      </section>
     </main>
 
-    <!-- RCA Insight Modal -->
+    <!-- RCA Insight Modal - Full screen on mobile -->
     <Teleport to="body">
       <Transition
         enter-active-class="transition-opacity duration-200"
@@ -505,109 +543,139 @@ async function copySummary() {
       >
         <div
           v-if="showInsightModal"
-          class="fixed inset-0 z-50 overflow-y-auto"
+          class="fixed inset-0 z-50 overflow-hidden"
           role="dialog"
           aria-modal="true"
           aria-labelledby="rca-modal-title"
         >
+          <!-- Backdrop -->
           <div
             class="fixed inset-0 bg-black/50 backdrop-blur-sm"
             aria-hidden="true"
             @click="showInsightModal = false"
           />
-          <div class="flex min-h-full items-center justify-center p-4">
-            <div class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl">
-              <!-- Header -->
-              <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                    <Icon name="heroicons:light-bulb" class="w-5 h-5 text-white" aria-hidden="true" />
-                  </div>
-                  <div>
-                    <h2 id="rca-modal-title" class="text-lg font-semibold text-gray-900">Análisis de Causa</h2>
-                    <p class="text-sm text-gray-500">{{ selectedMetric?.label }}</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
-                  aria-label="Cerrar modal"
-                  @click="showInsightModal = false"
-                >
-                  <Icon name="heroicons:x-mark" class="w-5 h-5" aria-hidden="true" />
-                </button>
-              </div>
 
-              <!-- Content -->
-              <div class="px-6 py-5">
-                <!-- Loading -->
-                <div v-if="isAnalyzing" class="py-12 text-center">
-                  <Icon name="heroicons:arrow-path" class="w-8 h-8 text-amber-500 animate-spin mx-auto mb-4" />
-                  <p class="text-gray-600">Analizando con IA...</p>
+          <!-- Modal container - Bottom sheet on mobile -->
+          <div class="flex min-h-full items-end sm:items-center justify-center sm:p-4">
+            <Transition
+              enter-active-class="transition-all duration-300 ease-out"
+              enter-from-class="translate-y-full sm:translate-y-4 sm:scale-95 opacity-0"
+              enter-to-class="translate-y-0 sm:scale-100 opacity-100"
+              leave-active-class="transition-all duration-200 ease-in"
+              leave-from-class="translate-y-0 sm:scale-100 opacity-100"
+              leave-to-class="translate-y-full sm:translate-y-4 sm:scale-95 opacity-0"
+            >
+              <div
+                v-if="showInsightModal"
+                class="relative w-full h-[90vh] sm:h-auto sm:max-h-[85vh] max-w-lg bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+              >
+                <!-- Mobile drag handle -->
+                <div class="sm:hidden flex justify-center pt-3 pb-1">
+                  <div class="w-10 h-1 bg-gray-300 rounded-full" />
                 </div>
 
-                <!-- Result -->
-                <template v-else-if="rcaResult">
-                  <!-- Change badge -->
-                  <div class="flex items-center gap-2 mb-4">
-                    <span
-                      class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold"
-                      :class="rcaResult.change.direction === 'up' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
-                    >
-                      <Icon
-                        :name="rcaResult.change.direction === 'up' ? 'heroicons:arrow-trending-up' : 'heroicons:arrow-trending-down'"
-                        class="w-4 h-4"
-                      />
-                      {{ rcaResult.change.percentage >= 0 ? '+' : '' }}{{ rcaResult.change.percentage.toFixed(1) }}%
-                    </span>
+                <!-- Header -->
+                <div class="flex items-center justify-between px-5 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                      <Icon name="heroicons:light-bulb" class="w-4 h-4 sm:w-5 sm:h-5 text-white" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <h2 id="rca-modal-title" class="text-base sm:text-lg font-semibold text-gray-900">Análisis de Causa</h2>
+                      <p class="text-xs sm:text-sm text-gray-500">{{ selectedMetric?.label }}</p>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    class="p-2.5 sm:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 active:bg-gray-200 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    aria-label="Cerrar modal"
+                    @click="showInsightModal = false"
+                  >
+                    <Icon name="heroicons:x-mark" class="w-5 h-5" aria-hidden="true" />
+                  </button>
+                </div>
 
-                  <!-- Demo badge -->
-                  <div v-if="rcaResult.isFallback" class="mb-4 flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-700">
-                    <Icon name="heroicons:information-circle" class="w-4 h-4" />
-                    <span>Demo - Crea tu cuenta para análisis con tus datos reales</span>
-                  </div>
-
-                  <!-- Summary -->
-                  <div class="bg-gray-50 rounded-xl p-4 mb-5">
-                    <p class="text-gray-700">{{ rcaResult.summary }}</p>
-                  </div>
-
-                  <!-- Causes -->
-                  <div class="space-y-3">
-                    <h3 class="text-sm font-semibold text-gray-900">Causas identificadas</h3>
-                    <div
-                      v-for="(cause, i) in rcaResult.causes"
-                      :key="i"
-                      class="border border-gray-200 rounded-xl p-4"
-                    >
-                      <div class="flex items-start justify-between gap-3 mb-2">
-                        <div class="flex items-center gap-2">
-                          <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center">
-                            {{ i + 1 }}
-                          </span>
-                          <span class="font-medium text-gray-900">{{ cause.factor }}</span>
-                        </div>
-                        <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">
-                          {{ Math.round(cause.confidence * 100) }}%
-                        </span>
+                <!-- Content - Scrollable -->
+                <div class="flex-1 overflow-y-auto px-5 sm:px-6 py-4 sm:py-5">
+                  <!-- Loading with skeleton -->
+                  <div v-if="isAnalyzing" class="py-8 sm:py-12">
+                    <div class="flex flex-col items-center">
+                      <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-amber-50 flex items-center justify-center mb-4">
+                        <Icon name="heroicons:arrow-path" class="w-7 h-7 sm:w-8 sm:h-8 text-amber-500 animate-spin" aria-hidden="true" />
                       </div>
-                      <p class="text-sm text-gray-600 ml-8 mb-2">{{ cause.explanation }}</p>
-                      <div v-if="cause.action" class="ml-8 flex items-start gap-2 p-2 bg-green-50 rounded-lg">
-                        <Icon name="heroicons:check-circle" class="w-4 h-4 text-green-600 mt-0.5" />
-                        <span class="text-sm text-green-800">{{ cause.action }}</span>
+                      <p class="text-gray-600 font-medium text-sm sm:text-base">Analizando con IA...</p>
+                      <!-- Skeleton loader -->
+                      <div class="w-full mt-6 space-y-3">
+                        <div class="h-4 bg-gray-200 rounded skeleton-shimmer w-3/4 mx-auto" />
+                        <div class="h-4 bg-gray-200 rounded skeleton-shimmer w-1/2 mx-auto" />
                       </div>
                     </div>
                   </div>
-                </template>
+
+                  <!-- Result -->
+                  <template v-else-if="rcaResult">
+                    <!-- Change badge -->
+                    <div class="flex items-center gap-2 mb-4">
+                      <span
+                        class="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-semibold"
+                        :class="rcaResult.change.direction === 'up' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'"
+                      >
+                        <Icon
+                          :name="rcaResult.change.direction === 'up' ? 'heroicons:arrow-trending-up' : 'heroicons:arrow-trending-down'"
+                          class="w-4 h-4"
+                          aria-hidden="true"
+                        />
+                        {{ rcaResult.change.percentage >= 0 ? '+' : '' }}{{ rcaResult.change.percentage.toFixed(1) }}%
+                      </span>
+                    </div>
+
+                    <!-- Demo badge -->
+                    <div v-if="rcaResult.isFallback" class="mb-4 flex items-center gap-2 px-3 py-2.5 bg-blue-50 border border-blue-100 rounded-lg text-xs sm:text-sm text-blue-700">
+                      <Icon name="heroicons:information-circle" class="w-4 h-4 shrink-0" aria-hidden="true" />
+                      <span>Demo - Crea tu cuenta para análisis con tus datos reales</span>
+                    </div>
+
+                    <!-- Summary -->
+                    <div class="bg-gray-50 rounded-xl p-4 mb-5">
+                      <p class="text-sm sm:text-base text-gray-700 leading-relaxed">{{ rcaResult.summary }}</p>
+                    </div>
+
+                    <!-- Causes -->
+                    <div class="space-y-3">
+                      <h3 class="text-xs sm:text-sm font-semibold text-gray-900">Causas identificadas</h3>
+                      <div
+                        v-for="(cause, i) in rcaResult.causes"
+                        :key="i"
+                        class="border border-gray-200 rounded-xl p-4"
+                      >
+                        <div class="flex items-start justify-between gap-3 mb-2">
+                          <div class="flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-xs font-bold flex items-center justify-center shrink-0">
+                              {{ i + 1 }}
+                            </span>
+                            <span class="font-medium text-gray-900 text-sm sm:text-base">{{ cause.factor }}</span>
+                          </div>
+                          <span class="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700 shrink-0">
+                            {{ Math.round(cause.confidence * 100) }}%
+                          </span>
+                        </div>
+                        <p class="text-xs sm:text-sm text-gray-600 ml-8 mb-2 leading-relaxed">{{ cause.explanation }}</p>
+                        <div v-if="cause.action" class="ml-8 flex items-start gap-2 p-2.5 bg-green-50 rounded-lg">
+                          <Icon name="heroicons:check-circle" class="w-4 h-4 text-green-600 mt-0.5 shrink-0" aria-hidden="true" />
+                          <span class="text-xs sm:text-sm text-green-800 leading-relaxed">{{ cause.action }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                </div>
               </div>
-            </div>
+            </Transition>
           </div>
         </div>
       </Transition>
     </Teleport>
 
-    <!-- Executive Summary Modal -->
+    <!-- Executive Summary Modal - Full screen on mobile -->
     <Teleport to="body">
       <Transition
         enter-active-class="transition-opacity duration-200"
@@ -617,78 +685,158 @@ async function copySummary() {
       >
         <div
           v-if="showSummaryModal"
-          class="fixed inset-0 z-50 overflow-y-auto"
+          class="fixed inset-0 z-50 overflow-hidden"
           role="dialog"
           aria-modal="true"
           aria-labelledby="summary-modal-title"
         >
+          <!-- Backdrop -->
           <div
             class="fixed inset-0 bg-black/50 backdrop-blur-sm"
             aria-hidden="true"
             @click="showSummaryModal = false"
           />
-          <div class="flex min-h-full items-center justify-center p-4">
-            <div class="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col">
-              <!-- Header -->
-              <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <div class="flex items-center gap-3">
-                  <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                    <Icon name="heroicons:document-text" class="w-5 h-5 text-white" aria-hidden="true" />
-                  </div>
-                  <div>
-                    <h2 id="summary-modal-title" class="text-lg font-semibold text-gray-900">Resumen Ejecutivo</h2>
-                    <p class="text-sm text-gray-500">{{ mockClient.name }}</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
-                  aria-label="Cerrar modal"
-                  @click="showSummaryModal = false"
-                >
-                  <Icon name="heroicons:x-mark" class="w-5 h-5" aria-hidden="true" />
-                </button>
-              </div>
 
-              <!-- Content -->
-              <div class="px-6 py-5 overflow-y-auto flex-1">
-                <!-- Loading -->
-                <div v-if="isGeneratingSummary" class="py-12 text-center">
-                  <Icon name="heroicons:arrow-path" class="w-8 h-8 text-amber-500 animate-spin mx-auto mb-4" />
-                  <p class="text-gray-600">Generando resumen...</p>
+          <!-- Modal container - Bottom sheet on mobile -->
+          <div class="flex min-h-full items-end sm:items-center justify-center sm:p-4">
+            <Transition
+              enter-active-class="transition-all duration-300 ease-out"
+              enter-from-class="translate-y-full sm:translate-y-4 sm:scale-95 opacity-0"
+              enter-to-class="translate-y-0 sm:scale-100 opacity-100"
+              leave-active-class="transition-all duration-200 ease-in"
+              leave-from-class="translate-y-0 sm:scale-100 opacity-100"
+              leave-to-class="translate-y-full sm:translate-y-4 sm:scale-95 opacity-0"
+            >
+              <div
+                v-if="showSummaryModal"
+                class="relative w-full h-[95vh] sm:h-auto sm:max-h-[90vh] max-w-2xl bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+              >
+                <!-- Mobile drag handle -->
+                <div class="sm:hidden flex justify-center pt-3 pb-1">
+                  <div class="w-10 h-1 bg-gray-300 rounded-full" />
                 </div>
 
-                <!-- Result -->
-                <template v-else-if="summaryResult">
-                  <!-- Demo badge -->
-                  <div v-if="summaryResult.isFallback" class="mb-4 flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-100 rounded-lg text-sm text-blue-700">
-                    <Icon name="heroicons:information-circle" class="w-4 h-4" />
-                    <span>Demo - Crea tu cuenta para resúmenes con tus datos reales</span>
+                <!-- Header - Sticky -->
+                <div class="flex items-center justify-between px-5 sm:px-6 py-3 sm:py-4 border-b border-gray-100 bg-white">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                      <Icon name="heroicons:document-text" class="w-4 h-4 sm:w-5 sm:h-5 text-white" aria-hidden="true" />
+                    </div>
+                    <div>
+                      <h2 id="summary-modal-title" class="text-base sm:text-lg font-semibold text-gray-900">Resumen Ejecutivo</h2>
+                      <p class="text-xs sm:text-sm text-gray-500">{{ mockClient.name }}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    class="p-2.5 sm:p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 active:bg-gray-200 rounded-lg min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    aria-label="Cerrar modal"
+                    @click="showSummaryModal = false"
+                  >
+                    <Icon name="heroicons:x-mark" class="w-5 h-5" aria-hidden="true" />
+                  </button>
+                </div>
+
+                <!-- Content - Scrollable -->
+                <div class="flex-1 overflow-y-auto px-5 sm:px-6 py-4 sm:py-5">
+                  <!-- Loading with skeleton -->
+                  <div v-if="isGeneratingSummary" class="py-8 sm:py-12">
+                    <div class="flex flex-col items-center">
+                      <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-amber-50 flex items-center justify-center mb-4">
+                        <Icon name="heroicons:arrow-path" class="w-7 h-7 sm:w-8 sm:h-8 text-amber-500 animate-spin" aria-hidden="true" />
+                      </div>
+                      <p class="text-gray-600 font-medium text-sm sm:text-base">Generando resumen...</p>
+                      <!-- Skeleton loader -->
+                      <div class="w-full mt-6 space-y-3">
+                        <div class="h-4 bg-gray-200 rounded skeleton-shimmer w-full" />
+                        <div class="h-4 bg-gray-200 rounded skeleton-shimmer w-5/6" />
+                        <div class="h-4 bg-gray-200 rounded skeleton-shimmer w-4/6" />
+                      </div>
+                    </div>
                   </div>
 
-                  <!-- Markdown preview -->
-                  <div class="prose prose-sm max-w-none bg-gray-50 rounded-xl p-6 overflow-x-auto">
-                    <pre class="whitespace-pre-wrap text-sm text-gray-700 font-sans">{{ summaryResult.markdown }}</pre>
-                  </div>
-                </template>
-              </div>
+                  <!-- Result -->
+                  <template v-else-if="summaryResult">
+                    <!-- Demo badge -->
+                    <div v-if="summaryResult.isFallback" class="mb-4 flex items-center gap-2 px-3 py-2.5 bg-blue-50 border border-blue-100 rounded-lg text-xs sm:text-sm text-blue-700">
+                      <Icon name="heroicons:information-circle" class="w-4 h-4 shrink-0" aria-hidden="true" />
+                      <span>Demo - Crea tu cuenta para resúmenes con tus datos reales</span>
+                    </div>
 
-              <!-- Footer -->
-              <div v-if="summaryResult && !isGeneratingSummary" class="flex items-center justify-between px-6 py-4 border-t border-gray-100 bg-gray-50">
-                <p class="text-xs text-gray-500">Listo para copiar y enviar</p>
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors"
-                  @click="copySummary"
-                >
-                  <Icon :name="copied ? 'heroicons:check' : 'heroicons:clipboard-document'" class="w-4 h-4" />
-                  {{ copied ? 'Copiado!' : 'Copiar resumen' }}
-                </button>
+                    <!-- Markdown preview -->
+                    <div class="prose prose-sm max-w-none bg-gray-50 rounded-xl p-4 sm:p-6 overflow-x-auto">
+                      <pre class="whitespace-pre-wrap text-xs sm:text-sm text-gray-700 font-sans leading-relaxed">{{ summaryResult.markdown }}</pre>
+                    </div>
+                  </template>
+                </div>
+
+                <!-- Footer - Sticky -->
+                <div v-if="summaryResult && !isGeneratingSummary" class="flex items-center justify-between px-5 sm:px-6 py-3 sm:py-4 border-t border-gray-100 bg-gray-50">
+                  <p class="text-xs text-gray-500 hidden sm:block">Listo para copiar y enviar</p>
+                  <button
+                    type="button"
+                    class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-3 sm:py-2.5 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white font-medium rounded-lg transition-colors min-h-[48px] sm:min-h-[44px]"
+                    @click="copySummary"
+                  >
+                    <Icon :name="copied ? 'heroicons:check' : 'heroicons:clipboard-document'" class="w-4 h-4" aria-hidden="true" />
+                    {{ copied ? 'Copiado!' : 'Copiar resumen' }}
+                  </button>
+                </div>
               </div>
-            </div>
+            </Transition>
           </div>
         </div>
       </Transition>
     </Teleport>
   </div>
 </template>
+
+<style scoped>
+/* Fluid typography */
+.text-fluid-xl {
+  font-size: clamp(1.25rem, 1rem + 1.5vw, 1.75rem);
+}
+
+/* Hide scrollbar */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Skeleton shimmer animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #e5e7eb 25%, #d1d5db 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .transition-all,
+  .transition-colors,
+  .transition-transform,
+  .transition-opacity {
+    transition-duration: 0.01ms !important;
+  }
+
+  .animate-spin {
+    animation: none !important;
+  }
+
+  .skeleton-shimmer {
+    animation: none !important;
+  }
+}
+</style>

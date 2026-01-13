@@ -162,18 +162,18 @@ function selectMetric(metric: DemoMetric) {
     <!-- Demo Container -->
     <div class="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-w-md mx-auto">
       <!-- Demo Header -->
-      <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-4 py-3 border-b border-gray-200">
+      <div class="bg-gradient-to-r from-gray-50 to-gray-100 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-gray-200">
         <div class="flex items-center gap-2">
-          <div class="flex gap-1.5">
-            <div class="w-3 h-3 rounded-full bg-red-400" />
-            <div class="w-3 h-3 rounded-full bg-yellow-400" />
-            <div class="w-3 h-3 rounded-full bg-green-400" />
+          <div class="flex gap-1 sm:gap-1.5">
+            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-400" />
+            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-yellow-400" />
+            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-green-400" />
           </div>
-          <span class="text-xs text-gray-500 ml-2">Dashboard - Demo Agency</span>
+          <span class="text-[10px] sm:text-xs text-gray-500 ml-1.5 sm:ml-2">Dashboard - Demo Agency</span>
         </div>
       </div>
 
-      <!-- Metric Tabs -->
+      <!-- Metric Tabs - Touch friendly -->
       <div class="flex border-b border-gray-100" role="tablist" aria-label="Métricas disponibles">
         <button
           v-for="metric in mockMetrics"
@@ -185,10 +185,10 @@ function selectMetric(metric: DemoMetric) {
           :aria-controls="`panel-${metric.id}`"
           :tabindex="selectedMetric.id === metric.id ? 0 : -1"
           :class="[
-            'flex-1 px-4 py-2.5 text-sm font-medium transition-colors',
+            'flex-1 px-2 sm:px-4 py-3 sm:py-2.5 text-xs sm:text-sm font-medium transition-colors min-h-[44px] touch-manipulation',
             selectedMetric.id === metric.id
               ? 'text-amber-600 border-b-2 border-amber-500 bg-amber-50/50'
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50',
+              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 active:bg-gray-100',
           ]"
           @click="selectMetric(metric)"
         >
@@ -198,15 +198,15 @@ function selectMetric(metric: DemoMetric) {
 
       <!-- Main Content -->
       <div
-        class="p-6"
+        class="p-4 sm:p-6"
         role="tabpanel"
         :id="`panel-${selectedMetric.id}`"
         :aria-labelledby="`tab-${selectedMetric.id}`"
       >
         <!-- Metric Display -->
-        <div class="text-center mb-6">
-          <p class="text-sm text-gray-500 mb-1">{{ selectedMetric.label }}</p>
-          <p class="text-4xl font-bold text-gray-900">
+        <div class="text-center mb-5 sm:mb-6">
+          <p class="text-xs sm:text-sm text-gray-500 mb-1">{{ selectedMetric.label }}</p>
+          <p class="text-3xl sm:text-4xl font-bold text-gray-900">
             {{ formatValue(selectedMetric) }}
           </p>
           <div class="flex items-center justify-center gap-1 mt-2">
@@ -215,19 +215,20 @@ function selectMetric(metric: DemoMetric) {
                 ? 'heroicons:arrow-trending-up'
                 : 'heroicons:arrow-trending-down'"
               :class="[
-                'w-5 h-5',
+                'w-4 h-4 sm:w-5 sm:h-5',
                 getChange(selectedMetric).isPositive ? 'text-green-500' : 'text-red-500',
               ]"
+              aria-hidden="true"
             />
             <span
               :class="[
-                'text-sm font-semibold',
+                'text-xs sm:text-sm font-semibold',
                 getChange(selectedMetric).isPositive ? 'text-green-600' : 'text-red-600',
               ]"
             >
               {{ getChange(selectedMetric).isPositive ? '+' : '' }}{{ getChange(selectedMetric).value.toFixed(1) }}%
             </span>
-            <span class="text-sm text-gray-400">vs semana anterior</span>
+            <span class="text-xs sm:text-sm text-gray-400">vs semana anterior</span>
           </div>
         </div>
 
@@ -241,15 +242,15 @@ function selectMetric(metric: DemoMetric) {
           leave-from-class="opacity-100 translate-y-0"
           leave-to-class="opacity-0 -translate-y-2"
         >
-          <!-- Button -->
+          <!-- Button - Touch friendly -->
           <button
             v-if="!showInsight"
             type="button"
-            class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold rounded-xl shadow-lg shadow-amber-500/25 transition-all hover:shadow-xl hover:shadow-amber-500/30 hover:-translate-y-0.5"
+            class="w-full flex items-center justify-center gap-2 px-4 py-3.5 sm:py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:from-amber-700 active:to-orange-700 text-white font-semibold rounded-xl shadow-lg shadow-amber-500/25 transition-all hover:shadow-xl hover:shadow-amber-500/30 hover:-translate-y-0.5 active:translate-y-0 min-h-[48px] touch-manipulation"
             @click="analyzeMetric"
           >
-            <Icon name="heroicons:light-bulb" class="w-5 h-5" />
-            <span>¿Por qué cambió?</span>
+            <Icon name="heroicons:light-bulb" class="w-5 h-5" aria-hidden="true" />
+            <span class="text-sm sm:text-base">¿Por qué cambió?</span>
           </button>
 
           <!-- Loading -->
@@ -257,22 +258,29 @@ function selectMetric(metric: DemoMetric) {
             v-else-if="isAnalyzing"
             class="text-center py-4"
           >
-            <Icon name="heroicons:arrow-path" class="w-8 h-8 text-amber-500 animate-spin mx-auto" />
-            <p class="text-sm text-gray-500 mt-2">Analizando con IA...</p>
+            <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-3">
+              <Icon name="heroicons:arrow-path" class="w-6 h-6 sm:w-8 sm:h-8 text-amber-500 animate-spin" aria-hidden="true" />
+            </div>
+            <p class="text-xs sm:text-sm text-gray-500">Analizando con IA...</p>
+            <!-- Skeleton -->
+            <div class="mt-4 space-y-2">
+              <div class="h-3 bg-gray-200 rounded skeleton-shimmer w-3/4 mx-auto" />
+              <div class="h-3 bg-gray-200 rounded skeleton-shimmer w-1/2 mx-auto" />
+            </div>
           </div>
 
           <!-- Result -->
           <div
             v-else-if="analysisResult"
-            class="space-y-4"
+            class="space-y-3 sm:space-y-4"
           >
             <!-- Summary -->
-            <div class="bg-amber-50 border border-amber-100 rounded-xl p-4">
-              <div class="flex items-start gap-3">
-                <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-                  <Icon name="heroicons:light-bulb" class="w-4 h-4 text-amber-600" />
+            <div class="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 rounded-xl p-3 sm:p-4">
+              <div class="flex items-start gap-2 sm:gap-3">
+                <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                  <Icon name="heroicons:light-bulb" class="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600" aria-hidden="true" />
                 </div>
-                <p class="text-sm text-gray-700 leading-relaxed">
+                <p class="text-xs sm:text-sm text-gray-700 leading-relaxed">
                   {{ analysisResult.summary }}
                 </p>
               </div>
@@ -280,21 +288,21 @@ function selectMetric(metric: DemoMetric) {
 
             <!-- Causes -->
             <div class="space-y-2">
-              <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Causas identificadas</p>
+              <p class="text-[10px] sm:text-xs font-semibold text-gray-500 uppercase tracking-wide">Causas identificadas</p>
               <div
                 v-for="(cause, i) in analysisResult.causes?.slice(0, 2)"
                 :key="i"
-                class="flex items-start gap-3 p-3 bg-gray-50 rounded-lg"
+                class="flex items-start gap-2 sm:gap-3 p-2.5 sm:p-3 bg-gray-50 rounded-lg"
               >
-                <span class="w-5 h-5 rounded-full bg-amber-500 text-white text-xs font-bold flex items-center justify-center shrink-0">
+                <span class="w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] sm:text-xs font-bold flex items-center justify-center shrink-0">
                   {{ i + 1 }}
                 </span>
                 <div class="flex-1 min-w-0">
-                  <p class="text-sm font-medium text-gray-900">{{ cause.factor }}</p>
-                  <p class="text-xs text-gray-500 mt-0.5">{{ cause.explanation }}</p>
+                  <p class="text-xs sm:text-sm font-medium text-gray-900">{{ cause.factor }}</p>
+                  <p class="text-[10px] sm:text-xs text-gray-500 mt-0.5 line-clamp-2">{{ cause.explanation }}</p>
                   <p
                     v-if="cause.action"
-                    class="text-xs text-amber-700 font-medium mt-1"
+                    class="text-[10px] sm:text-xs text-amber-700 font-medium mt-1"
                   >
                     → {{ cause.action }}
                   </p>
@@ -305,16 +313,16 @@ function selectMetric(metric: DemoMetric) {
             <!-- Demo badge -->
             <div
               v-if="analysisResult.isFallback"
-              class="flex items-center justify-center gap-1.5 text-xs text-blue-600 bg-blue-50 py-2 rounded-lg"
+              class="flex items-center justify-center gap-1.5 text-[10px] sm:text-xs text-blue-600 bg-blue-50 py-2 rounded-lg"
             >
-              <Icon name="heroicons:information-circle" class="w-4 h-4" />
+              <Icon name="heroicons:information-circle" class="w-3.5 h-3.5 sm:w-4 sm:h-4" aria-hidden="true" />
               <span>Demo - Crea tu cuenta para análisis reales</span>
             </div>
 
-            <!-- Reset button -->
+            <!-- Reset button - Touch friendly -->
             <button
               type="button"
-              class="w-full text-center text-sm text-gray-500 hover:text-gray-700 py-2"
+              class="w-full text-center text-xs sm:text-sm text-gray-500 hover:text-gray-700 active:text-gray-900 py-3 min-h-[44px] touch-manipulation transition-colors"
               @click="resetDemo"
             >
               ← Probar otra métrica
@@ -328,3 +336,37 @@ function selectMetric(metric: DemoMetric) {
     <div class="absolute -z-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-to-r from-amber-100/50 via-orange-100/50 to-amber-100/50 rounded-full blur-3xl" />
   </div>
 </template>
+
+<style scoped>
+/* Skeleton shimmer animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #e5e7eb 25%, #d1d5db 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .transition-all,
+  .transition-colors {
+    transition-duration: 0.01ms !important;
+  }
+
+  .animate-spin {
+    animation: none !important;
+  }
+
+  .skeleton-shimmer {
+    animation: none !important;
+  }
+}
+</style>
